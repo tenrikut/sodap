@@ -2,10 +2,10 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { SodapProvider } from "../../contexts/SodapContext";
 import StoreSetup from "../../components/store/StoreSetup";
 import ProductList from "../../components/store/ProductList";
 import AddProduct from "../../components/store/AddProduct";
+import { SodapProvider } from "src/contexts/SodapContext";
 
 export default function Dashboard() {
   const [activeTab, setActiveTab] = useState("products");
@@ -47,12 +47,16 @@ export default function Dashboard() {
             </nav>
           </div>
 
-          {activeTab === "setup" && <StoreSetup />}
+          {activeTab === "setup" && <StoreSetup onComplete={() => {}} />}
 
           {activeTab === "products" && (
             <>
               {isAddingProduct ? (
-                <AddProduct onCancel={() => setIsAddingProduct(false)} />
+                <AddProduct
+                  onCancel={() => setIsAddingProduct(false)}
+                  onSubmit={() => setIsAddingProduct(false)}
+                  isOpen={isAddingProduct}
+                />
               ) : (
                 <>
                   <div className="flex justify-end mb-4">

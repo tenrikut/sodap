@@ -6,20 +6,16 @@ import React, {
   ReactNode,
 } from "react";
 import {
-  AuthUser,
-  AuthSession,
-  AuthError,
-  AuthContextType,
-} from "@/types/sodap";
-import {
-  createClient,
-  SupabaseClient,
+  User as AuthUser,
   Session,
-  User,
+  SupabaseClient,
+  AuthChangeEvent,
 } from "@supabase/supabase-js";
+import { createClient } from "@supabase/supabase-js";
+import { AuthContextType, AuthError, AuthSession } from "types/sodap";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "";
 const supabase: SupabaseClient = createClient(supabaseUrl, supabaseAnonKey);
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -32,13 +28,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     const { data: listener } = supabase.auth.onAuthStateChange(
-      (event, session) => {
+      (event: AuthChangeEvent, session: Session | null) => {
         if (session?.user) {
-          setUser({
-            id: session.user.id,
-            email: session.user.email!,
-            createdAt: new Date(session.user.created_at!).getTime(),
-          });
+          setUser(session.user);
           setSession({
             user: {
               id: session.user.id,
@@ -47,7 +39,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             },
             accessToken: session.access_token,
             refreshToken: session.refresh_token!,
-            expiresAt: session.expires_at * 1000,
+            expiresAt: session.expires_at ? session.expires_at * 1000 : 0,
           });
         } else {
           setUser(null);
@@ -104,7 +96,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   return (
     <AuthContext.Provider
       value={{
-        user,
+        user: user
+          ? {
+              id: user.id,
+              email: user.email || "",
+              createdAt: new Date(user.created_at!).getTime(),
+            }
+          : null,
         session,
         loading,
         error,

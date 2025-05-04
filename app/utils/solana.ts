@@ -1,6 +1,7 @@
 import { Connection, PublicKey } from "@solana/web3.js";
 import { AnchorProvider, Program, web3 } from "@project-serum/anchor";
 import { Product } from "@/types/sodap";
+import BN from "bn.js";
 
 // Define the program ID (replace with actual deployed program ID)
 export const PROGRAM_ID = new PublicKey(
@@ -89,8 +90,8 @@ export async function registerProduct(
     const tx = await program.methods
       .registerProduct(
         productUuid,
-        new web3.BN(priceInLamports),
-        new web3.BN(productData.inventory),
+        new BN(priceInLamports),
+        new BN(productData.inventory),
         { none: {} }, // TokenizedType (None or SplToken)
         JSON.stringify({
           name: productData.name,
@@ -138,10 +139,10 @@ export async function updateProduct(
 
     // Prepare update parameters
     const newPrice = updates.price
-      ? new web3.BN(Math.floor(updates.price * 1_000_000_000))
+      ? new BN(Math.floor(updates.price * 1_000_000_000))
       : null;
 
-    const newStock = updates.inventory ? new web3.BN(updates.inventory) : null;
+    const newStock = updates.inventory ? new BN(updates.inventory) : null;
 
     let newMetadataUri = null;
     if (
@@ -340,9 +341,9 @@ export async function registerStoreOnChain(
     const [storePda, _] = await findStoreAddress(storeId);
     // Use a default loyalty config for now
     const loyaltyConfig = {
-      pointsPerDollar: new web3.BN(0),
-      minimumPurchase: new web3.BN(0),
-      rewardPercentage: new web3.BN(0),
+      pointsPerDollar: new BN(0),
+      minimumPurchase: new BN(0),
+      rewardPercentage: new BN(0),
       isActive: false,
     };
     const tx = await program.methods
@@ -412,4 +413,66 @@ export async function addStoreAdminOnChain(
     console.error("Error adding store admin:", error);
     throw error;
   }
+}
+
+// Utility to create a new Solana wallet (Keypair)
+export function createNewWallet() {
+  const keypair = web3.Keypair.generate();
+  return {
+    publicKey: keypair.publicKey.toBase58(),
+    secretKey: Array.from(keypair.secretKey),
+    keypair,
+  };
+}
+
+// Fetch recent confirmed signatures for your program
+export async function fetchProgramSignatures(limit = 50) {
+  const connection = new Connection(
+    process.env.NEXT_PUBLIC_SOLANA_RPC_URL || "https://api.devnet.solana.com"
+  );
+  // Get signatures for transactions involving your program
+  const signatures = await connection.getSignaturesForAddress(PROGRAM_ID, {
+    limit,
+  });
+  return signatures.map((sig) => sig.signature);
+}
+
+// Fetch and parse logs for each transaction
+export async function fetchAndParseProgramEvents(limit = 50) {
+  const connection = new Connection(
+    process.env.NEXT_PUBLIC_SOLANA_RPC_URL || "https://api.devnet.solana.com"
+  );
+  const signatures = await fetchProgramSignatures(limit);
+
+  const events: any[] = [];
+  for (const signature of signatures) {
+    const tx = await connection.getTransaction(signature, {
+      commitment: "confirmed",
+    });
+    if (!tx || !tx.meta || !tx.meta.logMessages) continue;
+
+    // Parse Anchor events from log messages
+    for (const log of tx.meta.logMessages) {
+      // Anchor events are logged as: "Program log: EVENT_JSON"
+      if (log.startsWith("Program log:")) {
+        try {
+          // Try to parse the JSON part (after "Program log: ")
+          const eventStr = log.replace("Program log: ", "");
+          // Only parse if it looks like a JSON object
+          if (eventStr.startsWith("{") && eventStr.endsWith("}")) {
+            const event = JSON.parse(eventStr);
+            events.push({
+              ...event,
+              signature,
+              slot: tx.slot,
+              blockTime: tx.blockTime,
+            });
+          }
+        } catch (e) {
+          // Not a JSON event, skip
+        }
+      }
+    }
+  }
+  return events;
 }

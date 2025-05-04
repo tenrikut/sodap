@@ -10,11 +10,13 @@ import {
   PhantomWalletAdapter,
   SolflareWalletAdapter,
   TorusWalletAdapter,
-  SlopeWalletAdapter,
   LedgerWalletAdapter,
 } from "@solana/wallet-adapter-wallets";
 import { WalletModalProvider } from "@solana/wallet-adapter-react-ui";
 import { clusterApiUrl } from "@solana/web3.js";
+
+// Import wallet adapter styles
+require("@solana/wallet-adapter-react-ui/styles.css");
 
 interface SolanaWalletProviderProps {
   children: ReactNode;
@@ -30,13 +32,15 @@ const SolanaWalletProvider: FC<SolanaWalletProviderProps> = ({ children }) => {
     );
   }, []);
 
-  // Initialize wallet adapters
+  // Initialize wallet adapters with proper configuration
   const wallets = useMemo(
     () => [
-      new PhantomWalletAdapter(),
+      new PhantomWalletAdapter({
+        // Add any specific Phantom configuration here
+        network: WalletAdapterNetwork.Devnet,
+      }),
       new SolflareWalletAdapter(),
       new TorusWalletAdapter(),
-      new SlopeWalletAdapter(),
       new LedgerWalletAdapter(),
     ],
     []
@@ -44,7 +48,7 @@ const SolanaWalletProvider: FC<SolanaWalletProviderProps> = ({ children }) => {
 
   return (
     <ConnectionProvider endpoint={endpoint}>
-      <WalletProvider wallets={wallets} autoConnect>
+      <WalletProvider wallets={wallets} autoConnect={false}>
         <WalletModalProvider>{children}</WalletModalProvider>
       </WalletProvider>
     </ConnectionProvider>

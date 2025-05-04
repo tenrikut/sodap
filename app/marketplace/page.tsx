@@ -2,11 +2,11 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { SodapProvider } from "../../contexts/SodapContext";
-import StoreScan from "../../components/shopping/StoreScan";
-import ShoppingCart from "../../components/shopping/ShoppingCart";
-import ProductScanner from "../../components/shopping/ProductScanner";
-import { ShoppingCartProvider } from "../../contexts/ShoppingCartContext";
+import { SodapProvider } from "@/contexts/SodapContext";
+import StoreScan from "../src/components/shopping/StoreScan";
+import ShoppingCart from "../src/components/shopping/ShoppingCart";
+import ProductScanner from "../src/components/shopping/ProductScanner";
+import { ShoppingCartProvider } from "../src/contexts/ShoppingCartContext";
 
 export default function Marketplace() {
   const [activeStore, setActiveStore] = useState(null);

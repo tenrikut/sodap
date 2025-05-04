@@ -6,7 +6,7 @@ import { Button, HStack, Text, useToast, Box } from "@chakra-ui/react";
 import {
   handleWalletError,
   isPhantomInstalled,
-} from "@/utils/walletErrorHandler";
+} from "../utils/walletErrorHandler";
 
 // Import styles
 require("@solana/wallet-adapter-react-ui/styles.css");
@@ -39,7 +39,11 @@ const WalletConnect: FC = () => {
   const handleConnect = async () => {
     try {
       setErrorMessage(null);
+      if (!wallet) {
+        throw new Error("No wallet selected");
+      }
       await connect().catch((error) => {
+        console.error("Connection error:", error);
         setErrorMessage(handleWalletError(error));
       });
     } catch (error) {
@@ -73,12 +77,16 @@ const WalletConnect: FC = () => {
             {publicKey?.toString().slice(0, 4)}...
             {publicKey?.toString().slice(-4)}
           </Text>
-          <Button colorScheme="red" size="sm" onClick={disconnect}>
+          <Button
+            colorScheme="red"
+            size="sm"
+            onClick={disconnect}
+            isLoading={connecting}
+          >
             Disconnect
           </Button>
         </>
       ) : (
-        // Using the WalletMultiButton from Solana wallet adapter
         <WalletMultiButton />
       )}
     </HStack>
@@ -86,4 +94,3 @@ const WalletConnect: FC = () => {
 };
 
 export default WalletConnect;
- 

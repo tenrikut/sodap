@@ -16,7 +16,7 @@ import {
   PlatformAdmin,
   SuperRootAdmin,
   AdminAction,
-} from "@/types/sodap";
+} from "./types";
 import { v4 as uuidv4 } from "uuid";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { PublicKey } from "@solana/web3.js";
@@ -25,10 +25,12 @@ import {
   removePlatformAdminOnChain,
   fetchPlatformAdmins,
   PROGRAM_ID,
-} from "@/utils/solana";
+  getConnection,
+} from "../utils/solana";
 import { AnchorProvider, Program, web3 } from "@project-serum/anchor";
 
 interface SodapContextType {
+  userRole: any;
   store: Store | null;
   userProfile: UserProfile | null;
   createStore: (name: string, description: string) => Promise<void>;
@@ -71,6 +73,7 @@ interface SodapContextType {
 
 // Create the context with a default value
 export const SodapContext = createContext<SodapContextType>({
+  userRole: null,
   store: null,
   userProfile: null,
   createStore: async () => {},
@@ -583,6 +586,7 @@ export const SodapProvider = ({ children }: { children: ReactNode }) => {
   return (
     <SodapContext.Provider
       value={{
+        userRole: null, // TODO: Implement user role logic
         store,
         userProfile,
         createStore,

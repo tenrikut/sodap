@@ -9,8 +9,22 @@ import {
 } from "@chakra-ui/react";
 import NextLink from "next/link";
 import WalletConnect from "./WalletConnect";
+import { useContext, useEffect, useState } from "react";
+import { SodapContext } from "../contexts/SodapContext";
 
 const NavBar = () => {
+  const context = useContext(SodapContext);
+  const userRole = context?.userRole;
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
+    return null;
+  }
+
   return (
     <Box
       as="nav"
@@ -45,15 +59,61 @@ const NavBar = () => {
             <Link as={NextLink} href="/marketplace" px={2} py={1} rounded="md">
               Marketplace
             </Link>
-            <Link
-              as={NextLink}
-              href="/admin/products"
-              px={2}
-              py={1}
-              rounded="md"
-            >
-              Admin
-            </Link>
+            {/* Admin links, role-based gating */}
+            {(userRole === "platform_admin" ||
+              userRole === "super_root_admin" ||
+              userRole === "store_owner" ||
+              userRole === "store_admin") && (
+              <>
+                {/* Product Management for all admin roles */}
+                <Link
+                  as={NextLink}
+                  href="/admin/products"
+                  px={2}
+                  py={1}
+                  rounded="md"
+                >
+                  Product Management
+                </Link>
+                {/* Platform Admin Management for platform_admin or super_root_admin */}
+                {(userRole === "platform_admin" ||
+                  userRole === "super_root_admin") && (
+                  <Link
+                    as={NextLink}
+                    href="/admin/platform-admins"
+                    px={2}
+                    py={1}
+                    rounded="md"
+                  >
+                    Platform Admin Management
+                  </Link>
+                )}
+                {/* Store Owner Management for platform_admin only */}
+                {userRole === "platform_admin" && (
+                  <Link
+                    as={NextLink}
+                    href="/admin/store-owners"
+                    px={2}
+                    py={1}
+                    rounded="md"
+                  >
+                    Store Owner Management
+                  </Link>
+                )}
+                {/* Store Admin Management for store_owner only */}
+                {userRole === "store_owner" && (
+                  <Link
+                    as={NextLink}
+                    href="/admin/store-admins"
+                    px={2}
+                    py={1}
+                    rounded="md"
+                  >
+                    Store Admin Management
+                  </Link>
+                )}
+              </>
+            )}
           </HStack>
         </HStack>
         <WalletConnect />
@@ -63,4 +123,3 @@ const NavBar = () => {
 };
 
 export default NavBar;
- 

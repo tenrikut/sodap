@@ -19,6 +19,18 @@ export function handleWalletError(error: unknown): string {
   }
 
   if (error instanceof WalletError) {
+    if (error.message.includes("User rejected")) {
+      return "Connection rejected. Please approve the connection request in your wallet.";
+    }
+    if (error.message.includes("timeout")) {
+      return "Connection timed out. Please try again.";
+    }
+    if (error.message.includes("No wallet selected")) {
+      return "Please select a wallet to connect.";
+    }
+    if (error.message.includes("Wallet not found")) {
+      return "Wallet not found. Please make sure Phantom is installed and unlocked.";
+    }
     return `Wallet error: ${error.message}`;
   }
 
@@ -31,6 +43,10 @@ export function handleWalletError(error: unknown): string {
       return "Connection timed out. Please try again.";
     }
 
+    if (error.message.includes("Failed to connect")) {
+      return "Failed to connect to wallet. Please try again or use a different wallet.";
+    }
+
     return `Error: ${error.message}`;
   }
 
@@ -41,6 +57,7 @@ export function handleWalletError(error: unknown): string {
  * Helper function to detect if Phantom wallet is installed
  */
 export function isPhantomInstalled(): boolean {
+  if (typeof window === "undefined") return false;
   const phantom = (window as any)?.phantom;
   return phantom && phantom.solana && phantom.solana.isPhantom;
 }
