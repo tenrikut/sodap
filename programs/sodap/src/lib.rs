@@ -1,23 +1,29 @@
-mod admin;
-mod cart;
-mod errors;
-mod loyalty;
-mod product;
-mod store;
-mod types;
-mod user;
-
 use anchor_lang::prelude::*;
-use anchor_spl::associated_token::AssociatedToken;
-use anchor_spl::token::{self, initialize_mint, InitializeMint, Mint, MintTo, Token, TokenAccount};
 
-// Declare the program ID
-// This ID is used to identify the deployed program on the Solana blockchain
+pub mod admin;
+pub mod error;
+pub mod loyalty;
+pub mod product;
+pub mod store;
+pub mod types;
+pub mod user;
+pub mod utils;
+
 declare_id!("4eLJ3QGiNrPN6UUr2fNxq6tUZqFdBMVpXkL2MhsKNriv");
 
-// Main program module
 #[program]
 pub mod sodap {
     use super::*;
-    // All logic is now in the respective modules
+
+    pub fn initialize(ctx: Context<Initialize>) -> Result<()> {
+        msg!("Greetings from: {:?}", ctx.program_id);
+        Ok(())
+    }
+
+    // Delegate to modules
+    pub use admin::*;
+    pub use loyalty::*;
+    pub use product::*;
+    pub use store::*;
+    pub use user::*;
 }

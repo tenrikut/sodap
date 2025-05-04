@@ -108,3 +108,51 @@ npm run dev
 ```
 
 Access the admin dashboard at `/admin/products` to manage products.
+
+# SODAP Anchor Program
+
+## Modular Structure
+
+This Anchor program is organized for clarity, maintainability, and extensibility. Each module maps to a major business/user story feature:
+
+- **product.rs**: Product registration, purchase, update, deactivation, and cart logic for store owners.
+- **store.rs**: Store registration, update, admin management, and store account logic.
+- **loyalty.rs**: Loyalty points, token minting, and redemption logic for customer rewards.
+- **admin.rs**: Platform admin and super root admin management.
+- **user.rs**: User profile creation, update, and purchase history.
+- **error.rs**: Centralized custom error types for all instructions.
+- **types.rs**: Shared enums and structs (e.g., roles, statuses, configs).
+- **utils.rs**: Helper functions for role checks and admin authentication.
+
+## How to Run Tests
+
+1. **Install Anchor** (if not already):
+   ```sh
+   cargo install --git https://github.com/coral-xyz/anchor anchor-cli --locked
+   ```
+2. **Build the program:**
+   ```sh
+   anchor build
+   ```
+3. **Run tests:**
+   ```sh
+   anchor test
+   ```
+
+## Extending the Program
+
+- Add new features by creating new modules or extending existing ones.
+- Each module is self-contained and only exposes what is needed for the main program.
+- Use the `types.rs` and `error.rs` modules for all shared types and errors.
+
+## User Story Mapping
+
+- **Platform Admin Management:** See `admin.rs` and `store.rs`.
+- **Store Owner Product Management:** See `product.rs` and `store.rs`.
+- **Loyalty & Rewards:** See `loyalty.rs` and `user.rs`.
+- **User Profiles & Analytics:** See `user.rs` and `product.rs` (for events).
+- **Transaction Monitoring:** All major instructions emit events for off-chain analytics.
+
+---
+
+For more details, see comments at the top of each module.
