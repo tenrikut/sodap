@@ -61,3 +61,46 @@ export interface ProductUUID {
 export interface ProductWithUUID extends Product {
   uuid: string; // The on-chain UUID
 }
+
+// --- Admin Management Types ---
+export interface PlatformAdmin {
+  walletAddress: string;
+  addedAt: number;
+}
+
+export interface SuperRootAdmin {
+  username: string;
+  password: string;
+  walletAddress: string;
+}
+
+export type AdminAction = "add" | "remove";
+
+// --- Auth Types ---
+export interface AuthUser {
+  id: string;
+  email: string;
+  createdAt: number;
+}
+
+export interface AuthSession {
+  user: AuthUser;
+  accessToken: string;
+  refreshToken: string;
+  expiresAt: number;
+}
+
+export interface AuthError {
+  message: string;
+}
+
+export interface AuthContextType {
+  user: AuthUser | null;
+  session: AuthSession | null;
+  loading: boolean;
+  error: AuthError | null;
+  register: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<void>;
+  logout: () => Promise<void>;
+  resetPassword: (email: string) => Promise<void>;
+}

@@ -5,6 +5,7 @@ import { SodapProvider } from "@/contexts/SodapContext";
 import SolanaWalletProvider from "@/providers/WalletProvider";
 import NavBar from "@/components/NavBar";
 import { Inter } from "next/font/google";
+import "./globals.css";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -30,4 +31,3 @@ export default function RootLayout({
     </html>
   );
 }
- 

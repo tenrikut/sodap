@@ -255,3 +255,161 @@ export async function fetchProduct(
     throw error;
   }
 }
+
+// Function to derive the platform_admins PDA address
+export async function findPlatformAdminsAddress(): Promise<
+  [PublicKey, number]
+> {
+  return PublicKey.findProgramAddressSync(
+    [Buffer.from("platform_admins")],
+    PROGRAM_ID
+  );
+}
+
+// Function to add a platform admin on-chain
+export async function addPlatformAdminOnChain(
+  program: Program,
+  signer: web3.Keypair,
+  newAdmin: PublicKey,
+  username: string,
+  password: string
+): Promise<string> {
+  try {
+    const [platformAdminsPda, _] = await findPlatformAdminsAddress();
+    const tx = await program.methods
+      .addPlatformAdmin(newAdmin, username, password)
+      .accounts({
+        platformAdmins: platformAdminsPda,
+        signer: signer.publicKey,
+      })
+      .signers([signer])
+      .rpc();
+    return tx;
+  } catch (error) {
+    console.error("Error adding platform admin:", error);
+    throw error;
+  }
+}
+
+// Function to remove a platform admin on-chain
+export async function removePlatformAdminOnChain(
+  program: Program,
+  signer: web3.Keypair,
+  adminPubkey: PublicKey,
+  username: string,
+  password: string
+): Promise<string> {
+  try {
+    const [platformAdminsPda, _] = await findPlatformAdminsAddress();
+    const tx = await program.methods
+      .removePlatformAdmin(adminPubkey, username, password)
+      .accounts({
+        platformAdmins: platformAdminsPda,
+        signer: signer.publicKey,
+      })
+      .signers([signer])
+      .rpc();
+    return tx;
+  } catch (error) {
+    console.error("Error removing platform admin:", error);
+    throw error;
+  }
+}
+
+// Function to fetch the current list of platform admins from chain
+export async function fetchPlatformAdmins(
+  program: Program
+): Promise<PublicKey[]> {
+  const [platformAdminsPda, _] = await findPlatformAdminsAddress();
+  const account = await program.account.platformAdmins.fetch(platformAdminsPda);
+  return account.admins;
+}
+
+// Function to register a store on-chain
+export async function registerStoreOnChain(
+  program: Program,
+  owner: web3.Keypair,
+  name: string,
+  description: string,
+  logoUri: string
+): Promise<string> {
+  try {
+    // Use the owner's public key as the store_id
+    const storeId = owner.publicKey;
+    // Find the PDA for the store
+    const [storePda, _] = await findStoreAddress(storeId);
+    // Use a default loyalty config for now
+    const loyaltyConfig = {
+      pointsPerDollar: new web3.BN(0),
+      minimumPurchase: new web3.BN(0),
+      rewardPercentage: new web3.BN(0),
+      isActive: false,
+    };
+    const tx = await program.methods
+      .registerStore(storeId, name, description, logoUri, loyaltyConfig)
+      .accounts({
+        store: storePda,
+        owner: owner.publicKey,
+        systemProgram: web3.SystemProgram.programId,
+      })
+      .signers([owner])
+      .rpc();
+    return tx;
+  } catch (error) {
+    console.error("Error registering store:", error);
+    throw error;
+  }
+}
+
+// Function to fetch all stores from the chain
+export async function fetchStores(program: Program): Promise<any[]> {
+  try {
+    const stores = await program.account.store.all();
+    return stores.map((s: any) => ({
+      storeId: s.publicKey.toBase58(),
+      owner: s.account.owner.toBase58(),
+      name: s.account.name,
+      description: s.account.description,
+      logoUri: s.account.logoUri,
+      createdAt: s.account.createdAt.toNumber() * 1000,
+    }));
+  } catch (error) {
+    console.error("Error fetching stores:", error);
+    return [];
+  }
+}
+
+// Function to add a store admin on-chain
+export async function addStoreAdminOnChain(
+  program: Program,
+  owner: web3.Keypair,
+  storeId: PublicKey,
+  adminPubkey: PublicKey,
+  roleType: string
+): Promise<string> {
+  try {
+    // Map roleType string to Anchor enum
+    let anchorRoleType;
+    if (roleType === "Manager") {
+      anchorRoleType = { manager: {} };
+    } else if (roleType === "Cashier") {
+      anchorRoleType = { cashier: {} };
+    } else {
+      throw new Error("Invalid role type");
+    }
+    // Find the PDA for the store
+    const [storePda, _] = await findStoreAddress(storeId);
+    const tx = await program.methods
+      .addAdmin(storeId, adminPubkey, anchorRoleType)
+      .accounts({
+        store: storePda,
+        owner: owner.publicKey,
+      })
+      .signers([owner])
+      .rpc();
+    return tx;
+  } catch (error) {
+    console.error("Error adding store admin:", error);
+    throw error;
+  }
+}

@@ -1052,6 +1052,8 @@ pub struct AdminRole {
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq)]
 pub enum AdminRoleType {
+    SuperRootAdmin,
+    PlatformAdmin,
     Owner,
     Manager,
     Cashier,
@@ -1330,4 +1332,117 @@ pub struct LoyaltyTokensMinted {
     pub amount: u64,
     pub remaining_points: u64,
     pub timestamp: i64,
+}
+
+// --- Super Root Admin Logic ---
+const SUPER_ROOT_ADMIN_USERNAME: &str = "super-admin";
+const SUPER_ROOT_ADMIN_PASSWORD: &str = "sodap*root";
+
+// For demonstration, hardcode a public key for the super root admin (replace with your real key in production)
+const SUPER_ROOT_ADMIN_PUBKEY: &str = "11111111111111111111111111111111"; // Replace with real pubkey
+
+#[account]
+pub struct PlatformAdmins {
+    pub admins: Vec<Pubkey>,
+}
+
+impl PlatformAdmins {
+    pub const LEN: usize = 4 + 32 * 10; // Up to 10 platform admins
+}
+
+// Utility function to check if signer is Super Root Admin
+fn is_super_root_admin(signer: &Pubkey) -> bool {
+    signer.to_string() == SUPER_ROOT_ADMIN_PUBKEY
+}
+
+// Utility function to check root password (for demonstration only)
+fn check_root_password(username: &str, password: &str) -> bool {
+    username == SUPER_ROOT_ADMIN_USERNAME && password == SUPER_ROOT_ADMIN_PASSWORD
+}
+
+#[derive(Accounts)]
+pub struct AddPlatformAdmin<'info> {
+    #[account(mut, seeds = [b"platform_admins"], bump)]
+    pub platform_admins: Account<'info, PlatformAdmins>,
+    #[account(signer)]
+    pub signer: AccountInfo<'info>,
+}
+
+// Instruction: Add a Platform Admin (only callable by Super Root Admin)
+pub fn add_platform_admin(
+    ctx: Context<AddPlatformAdmin>,
+    new_admin: Pubkey,
+    username: String,
+    password: String,
+) -> Result<()> {
+    require!(
+        is_super_root_admin(ctx.accounts.signer.key),
+        CustomError::Unauthorized
+    );
+    require!(
+        check_root_password(&username, &password),
+        CustomError::Unauthorized
+    );
+    let admins = &mut ctx.accounts.platform_admins;
+    if admins.admins.contains(&new_admin) {
+        return Err(CustomError::AdminAlreadyExists.into());
+    }
+    admins.admins.push(new_admin);
+    emit!(PlatformAdminAdded {
+        admin_pubkey: new_admin,
+        added_at: Clock::get()?.unix_timestamp,
+    });
+    Ok(())
+}
+
+// Utility function to check if signer is a Platform Admin
+fn is_platform_admin(signer: &Pubkey, admins: &PlatformAdmins) -> bool {
+    admins.admins.contains(signer)
+}
+
+#[event]
+pub struct PlatformAdminAdded {
+    pub admin_pubkey: Pubkey,
+    pub added_at: i64,
+}
+
+#[event]
+pub struct PlatformAdminRemoved {
+    pub admin_pubkey: Pubkey,
+    pub removed_at: i64,
+}
+
+#[derive(Accounts)]
+pub struct RemovePlatformAdmin<'info> {
+    #[account(mut, seeds = [b"platform_admins"], bump)]
+    pub platform_admins: Account<'info, PlatformAdmins>,
+    #[account(signer)]
+    pub signer: AccountInfo<'info>,
+}
+
+// Instruction: Remove a Platform Admin (only callable by Super Root Admin)
+pub fn remove_platform_admin(
+    ctx: Context<RemovePlatformAdmin>,
+    admin_pubkey: Pubkey,
+    username: String,
+    password: String,
+) -> Result<()> {
+    require!(
+        is_super_root_admin(ctx.accounts.signer.key),
+        CustomError::Unauthorized
+    );
+    require!(
+        check_root_password(&username, &password),
+        CustomError::Unauthorized
+    );
+    let admins = &mut ctx.accounts.platform_admins;
+    if !admins.admins.contains(&admin_pubkey) {
+        return Err(CustomError::AdminAlreadyExists.into());
+    }
+    admins.admins.retain(|a| a != &admin_pubkey);
+    emit!(PlatformAdminRemoved {
+        admin_pubkey,
+        removed_at: Clock::get()?.unix_timestamp,
+    });
+    Ok(())
 }

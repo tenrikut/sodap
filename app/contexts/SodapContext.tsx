@@ -1,16 +1,32 @@
 "use client";
 
-import { createContext, useState, useEffect, ReactNode, useCallback } from "react";
+import {
+  createContext,
+  useState,
+  useEffect,
+  ReactNode,
+  useCallback,
+} from "react";
 import {
   Store,
   Product,
   UserProfile,
   PurchaseRecord,
   Receipt,
+  PlatformAdmin,
+  SuperRootAdmin,
+  AdminAction,
 } from "@/types/sodap";
 import { v4 as uuidv4 } from "uuid";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { PublicKey } from "@solana/web3.js";
+import {
+  addPlatformAdminOnChain,
+  removePlatformAdminOnChain,
+  fetchPlatformAdmins,
+  PROGRAM_ID,
+} from "@/utils/solana";
+import { AnchorProvider, Program, web3 } from "@project-serum/anchor";
 
 interface SodapContextType {
   store: Store | null;
@@ -37,6 +53,20 @@ interface SodapContextType {
   convertUUIDToBytes: (uuid: string) => Uint8Array;
   convertBytesToUUID: (bytes: Uint8Array) => string;
   walletConnected: boolean;
+  platformAdmins: PlatformAdmin[];
+  addPlatformAdmin: (
+    admin: PlatformAdmin,
+    username: string,
+    password: string
+  ) => Promise<void>;
+  removePlatformAdmin: (
+    walletAddress: string,
+    username: string,
+    password: string
+  ) => Promise<void>;
+  superRootAdmin: SuperRootAdmin | null;
+  loginSuperRootAdmin: (username: string, password: string) => Promise<boolean>;
+  logoutSuperRootAdmin: () => void;
 }
 
 // Create the context with a default value
@@ -78,6 +108,12 @@ export const SodapContext = createContext<SodapContextType>({
   convertUUIDToBytes: () => new Uint8Array(16),
   convertBytesToUUID: () => "",
   walletConnected: false,
+  platformAdmins: [],
+  addPlatformAdmin: async () => {},
+  removePlatformAdmin: async () => {},
+  superRootAdmin: null,
+  loginSuperRootAdmin: async () => false,
+  logoutSuperRootAdmin: () => {},
 });
 
 // Mock data for demo
@@ -113,7 +149,11 @@ export const SodapProvider = ({ children }: { children: ReactNode }) => {
   const [store, setStore] = useState<Store | null>(null);
   const [products, setProducts] = useState<Product[]>(MOCK_PRODUCTS);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
-  
+  const [platformAdmins, setPlatformAdmins] = useState<PlatformAdmin[]>([]);
+  const [superRootAdmin, setSuperRootAdmin] = useState<SuperRootAdmin | null>(
+    null
+  );
+
   // Get wallet from the wallet adapter
   const { publicKey, connected } = useWallet();
 
@@ -145,7 +185,7 @@ export const SodapProvider = ({ children }: { children: ReactNode }) => {
   // Load user profile data
   const loadUserProfile = async (walletAddress: string) => {
     await new Promise((resolve) => setTimeout(resolve, 500));
-    
+
     // In a real implementation, this would fetch the user profile from blockchain
     setUserProfile({
       userId: `user-${walletAddress.substring(0, 8)}`,
@@ -456,6 +496,90 @@ export const SodapProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  // Super Root Admin login (stub, not secure)
+  const loginSuperRootAdmin = async (username: string, password: string) => {
+    if (username === "super-admin" && password === "sodap*root") {
+      setSuperRootAdmin({
+        username,
+        password,
+        walletAddress: "11111111111111111111111111111111",
+      });
+      return true;
+    }
+    return false;
+  };
+  const logoutSuperRootAdmin = () => setSuperRootAdmin(null);
+
+  // Helper to get Anchor program instance
+  const getAnchorProgram = async () => {
+    const connection = await getConnection();
+    // For demo: use window.solana or a local keypair for SRA
+    // In production, use wallet adapter provider
+    const provider = new AnchorProvider(connection, (window as any).solana, {});
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const idl = require("../../target/idl/sodap.json");
+    return new Program(idl, PROGRAM_ID, provider);
+  };
+
+  // Fetch platform admins from chain
+  const refreshPlatformAdmins = useCallback(async () => {
+    try {
+      const program = await getAnchorProgram();
+      const adminPubkeys = await fetchPlatformAdmins(program);
+      setPlatformAdmins(
+        adminPubkeys.map((pk) => ({
+          walletAddress: pk.toString(),
+          addedAt: Date.now(),
+        }))
+      );
+    } catch (e) {
+      // fallback: keep local state
+    }
+  }, []);
+
+  // Add Platform Admin (on-chain)
+  const addPlatformAdmin = async (
+    admin: PlatformAdmin,
+    username: string,
+    password: string
+  ) => {
+    const program = await getAnchorProgram();
+    // For demo: use a local keypair for SRA
+    const sraKeypair = web3.Keypair.generate(); // Replace with real SRA keypair
+    await addPlatformAdminOnChain(
+      program,
+      sraKeypair,
+      new web3.PublicKey(admin.walletAddress),
+      username,
+      password
+    );
+    await refreshPlatformAdmins();
+  };
+  // Remove Platform Admin (on-chain)
+  const removePlatformAdmin = async (
+    walletAddress: string,
+    username: string,
+    password: string
+  ) => {
+    const program = await getAnchorProgram();
+    const sraKeypair = web3.Keypair.generate(); // Replace with real SRA keypair
+    await removePlatformAdminOnChain(
+      program,
+      sraKeypair,
+      new web3.PublicKey(walletAddress),
+      username,
+      password
+    );
+    await refreshPlatformAdmins();
+  };
+
+  // Fetch platform admins on SRA login
+  useEffect(() => {
+    if (superRootAdmin) {
+      refreshPlatformAdmins();
+    }
+  }, [superRootAdmin, refreshPlatformAdmins]);
+
   return (
     <SodapContext.Provider
       value={{
@@ -477,10 +601,15 @@ export const SodapProvider = ({ children }: { children: ReactNode }) => {
         convertUUIDToBytes,
         convertBytesToUUID,
         walletConnected: connected,
+        platformAdmins,
+        addPlatformAdmin,
+        removePlatformAdmin,
+        superRootAdmin,
+        loginSuperRootAdmin,
+        logoutSuperRootAdmin,
       }}
     >
       {children}
     </SodapContext.Provider>
   );
 };
- 
