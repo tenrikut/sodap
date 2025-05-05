@@ -1,5 +1,9 @@
 use anchor_lang::prelude::*;
 
+// Declare the program ID used by Anchor
+declare_id!("4eLJ3QGiNrPN6UUr2fNxq6tUZqFdBMVpXkL2MhsKNriv");
+
+// Import context structs from each module
 pub mod admin;
 pub mod error;
 pub mod loyalty;
@@ -9,21 +13,162 @@ pub mod types;
 pub mod user;
 pub mod utils;
 
-declare_id!("4eLJ3QGiNrPN6UUr2fNxq6tUZqFdBMVpXkL2MhsKNriv");
+use crate::loyalty::{InitializeLoyaltyMint, MintLoyaltyTokens, RedeemLoyaltyPoints};
+use crate::product::{DeactivateProduct, PurchaseCart, RegisterProduct, UpdateProduct};
+use crate::store::{AddAdmin, RegisterStore, RemoveAdmin, UpdateStore};
+use crate::user::{CreateOrUpdateUserProfile, ScanAndPurchase};
 
 #[program]
 pub mod sodap {
     use super::*;
 
     pub fn initialize(ctx: Context<Initialize>) -> Result<()> {
-        msg!("Greetings from: {:?}", ctx.program_id);
+        msg!("Program initialized by: {:?}", ctx.accounts.payer.key());
         Ok(())
     }
 
-    // Delegate to modules
-    pub use admin::*;
-    pub use loyalty::*;
-    pub use product::*;
-    pub use store::*;
-    pub use user::*;
+    // Store-related instructions
+    pub fn register_store(
+        ctx: Context<RegisterStore>,
+        store_id: Pubkey,
+        name: String,
+        description: String,
+        logo_uri: String,
+        loyalty_config: types::LoyaltyConfig,
+    ) -> Result<()> {
+        store::register_store(ctx, store_id, name, description, logo_uri, loyalty_config)
+    }
+
+    pub fn update_store(
+        ctx: Context<UpdateStore>,
+        store_id: Pubkey,
+        name: Option<String>,
+        description: Option<String>,
+        logo_uri: Option<String>,
+        loyalty_config: Option<types::LoyaltyConfig>,
+    ) -> Result<()> {
+        store::update_store(ctx, store_id, name, description, logo_uri, loyalty_config)
+    }
+
+    pub fn add_admin(
+        ctx: Context<AddAdmin>,
+        store_id: Pubkey,
+        admin_pubkey: Pubkey,
+        role_type: types::AdminRoleType,
+    ) -> Result<()> {
+        store::add_admin(ctx, store_id, admin_pubkey, role_type)
+    }
+
+    pub fn remove_admin(
+        ctx: Context<RemoveAdmin>,
+        store_id: Pubkey,
+        admin_pubkey: Pubkey,
+    ) -> Result<()> {
+        store::remove_admin(ctx, store_id, admin_pubkey)
+    }
+
+    // Product-related instructions
+    pub fn register_product(
+        ctx: Context<RegisterProduct>,
+        product_uuid: [u8; 16],
+        price: u64,
+        stock: u64,
+        tokenized_type: types::TokenizedType,
+        metadata_uri: String,
+    ) -> Result<()> {
+        product::register_product(
+            ctx,
+            product_uuid,
+            price,
+            stock,
+            tokenized_type,
+            metadata_uri,
+        )
+    }
+
+    pub fn update_product(
+        ctx: Context<UpdateProduct>,
+        product_uuid: [u8; 16],
+        new_price: Option<u64>,
+        new_stock: Option<u64>,
+        new_metadata_uri: Option<String>,
+        new_tokenized_type: Option<types::TokenizedType>,
+    ) -> Result<()> {
+        product::update_product(
+            ctx,
+            product_uuid,
+            new_price,
+            new_stock,
+            new_metadata_uri,
+            new_tokenized_type,
+        )
+    }
+
+    pub fn deactivate_product(
+        ctx: Context<DeactivateProduct>,
+        product_uuid: [u8; 16],
+    ) -> Result<()> {
+        product::deactivate_product(ctx, product_uuid)
+    }
+
+    pub fn purchase_cart(
+        ctx: Context<PurchaseCart>,
+        product_uuids: Vec<[u8; 16]>,
+        quantities: Vec<u64>,
+        total_amount_paid: u64,
+        gas_fee: u64,
+        status: types::TransactionStatus,
+        anomaly_flag: Option<types::AnomalyFlag>,
+    ) -> Result<()> {
+        product::purchase_cart(
+            ctx,
+            product_uuids,
+            quantities,
+            total_amount_paid,
+            gas_fee,
+            status,
+            anomaly_flag,
+        )
+    }
+
+    // Loyalty system instructions
+    pub fn redeem_loyalty_points(
+        ctx: Context<RedeemLoyaltyPoints>,
+        points_to_redeem: u64,
+    ) -> Result<()> {
+        loyalty::redeem_loyalty_points(ctx, points_to_redeem)
+    }
+
+    pub fn mint_loyalty_tokens(ctx: Context<MintLoyaltyTokens>, amount: u64) -> Result<()> {
+        loyalty::mint_loyalty_tokens(ctx, amount)
+    }
+
+    pub fn initialize_loyalty_mint(ctx: Context<InitializeLoyaltyMint>) -> Result<()> {
+        loyalty::initialize_loyalty_mint(ctx)
+    }
+
+    // User profile instructions
+    pub fn create_or_update_user_profile(
+        ctx: Context<CreateOrUpdateUserProfile>,
+        user_id: Option<String>,
+        delivery_address: Option<String>,
+        preferred_store: Option<Pubkey>,
+    ) -> Result<()> {
+        user::create_or_update_user_profile(ctx, user_id, delivery_address, preferred_store)
+    }
+
+    pub fn scan_and_purchase(
+        ctx: Context<ScanAndPurchase>,
+        product_uuids: Vec<[u8; 16]>,
+        quantities: Vec<u64>,
+        store_id: Pubkey,
+    ) -> Result<()> {
+        user::scan_and_purchase(ctx, product_uuids, quantities, store_id)
+    }
+}
+#[derive(Accounts)]
+pub struct Initialize<'info> {
+    #[account(mut)]
+    pub payer: Signer<'info>,
+    pub system_program: Program<'info, System>,
 }

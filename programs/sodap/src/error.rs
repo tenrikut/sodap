@@ -46,4 +46,6 @@ pub enum CustomError {
     ArithmeticError,
     #[msg("Invalid metadata URI")]
     InvalidMetadataUri,
+    #[msg("Admin not found")]
+    AdminNotFound,
 }

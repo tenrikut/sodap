@@ -1,81 +1,33 @@
-// Loyalty-related instructions, events, and accounts will be placed here.
-
 use crate::error::CustomError;
-use crate::store::has_role;
-use crate::types::AdminRoleType;
+use crate::store::Store;
 use anchor_lang::prelude::*;
-use anchor_spl::associated_token::AssociatedToken;
-use anchor_spl::token::{Mint, Token, TokenAccount};
 
-// Loyalty instructions
-// (redeem_loyalty_points, mint_loyalty_tokens, initialize_loyalty_mint)
-// Loyalty events
-// (LoyaltyPointsEarned, LoyaltyPointsRedeemed, LoyaltyTokensMinted)
-// Loyalty accounts and context structs
-// (RedeemLoyaltyPoints, MintLoyaltyTokens, InitializeLoyaltyMint)
-
+// Redeem a specified amount of loyalty points from a store's loyalty mint
 pub fn redeem_loyalty_points(
     ctx: Context<RedeemLoyaltyPoints>,
     points_to_redeem: u64,
 ) -> Result<()> {
-    let user_profile = &mut ctx.accounts.user_profile;
-    let store_account = &ctx.accounts.store_account;
-    require!(
-        user_profile.loyalty_balance >= points_to_redeem,
-        CustomError::InsufficientLoyaltyPoints
-    );
-    require!(
-        store_account.loyalty_config.is_active,
-        CustomError::LoyaltyProgramInactive
-    );
-    let discount_value = points_to_redeem * 10_000_000; // 0.01 SOL in lamports
-    user_profile.loyalty_balance = user_profile
-        .loyalty_balance
-        .checked_sub(points_to_redeem)
-        .ok_or(CustomError::ArithmeticError)?;
-    emit!(LoyaltyPointsRedeemed {
-        user: ctx.accounts.user.key(),
-        store_id: ctx.accounts.store.key(),
-        points_redeemed: points_to_redeem,
-        discount_value,
-        remaining_points: user_profile.loyalty_balance,
-        timestamp: Clock::get()?.unix_timestamp,
-    });
+    let loyalty_mint = &mut ctx.accounts.loyalty_mint;
+    loyalty_mint.total_supply -= points_to_redeem;
     Ok(())
 }
 
+// Mint new loyalty tokens to the store's loyalty mint
 pub fn mint_loyalty_tokens(ctx: Context<MintLoyaltyTokens>, amount: u64) -> Result<()> {
-    let user_profile = &mut ctx.accounts.user_profile;
-    require!(
-        user_profile.loyalty_balance >= amount,
-        CustomError::InsufficientLoyaltyPoints
-    );
-    // Mint SPL tokens logic would go here (omitted for brevity)
-    user_profile.loyalty_balance = user_profile
-        .loyalty_balance
-        .checked_sub(amount)
-        .ok_or(CustomError::ArithmeticError)?;
-    emit!(LoyaltyTokensMinted {
-        user: ctx.accounts.user.key(),
-        amount,
-        remaining_points: user_profile.loyalty_balance,
-        timestamp: Clock::get()?.unix_timestamp,
-    });
+    let loyalty_mint = &mut ctx.accounts.loyalty_mint;
+    loyalty_mint.total_supply += amount;
     Ok(())
 }
 
+// Initialize a new loyalty mint for the given store
 pub fn initialize_loyalty_mint(ctx: Context<InitializeLoyaltyMint>) -> Result<()> {
-    let store = &ctx.accounts.store;
-    let signer = ctx.accounts.authority.key();
-    require!(
-        has_role(store, &signer, AdminRoleType::Owner)
-            || has_role(store, &signer, AdminRoleType::PlatformAdmin),
-        CustomError::Unauthorized
-    );
-    // CPI to initialize the mint would go here (omitted for brevity)
+    let loyalty_mint = &mut ctx.accounts.loyalty_mint;
+    loyalty_mint.store = ctx.accounts.store.key();
+    loyalty_mint.authority = ctx.accounts.authority.key();
     Ok(())
 }
 
+// Event: user earned loyalty points
 #[event]
 pub struct LoyaltyPointsEarned {
     pub user: Pubkey,
@@ -85,6 +37,7 @@ pub struct LoyaltyPointsEarned {
     pub timestamp: i64,
 }
 
+// Event: user redeemed loyalty points
 #[event]
 pub struct LoyaltyPointsRedeemed {
     pub user: Pubkey,
@@ -95,6 +48,7 @@ pub struct LoyaltyPointsRedeemed {
     pub timestamp: i64,
 }
 
+// Event: loyalty tokens were minted
 #[event]
 pub struct LoyaltyTokensMinted {
     pub user: Pubkey,
@@ -103,86 +57,60 @@ pub struct LoyaltyTokensMinted {
     pub timestamp: i64,
 }
 
+// Account that stores information about the loyalty token mint
+#[account]
+pub struct LoyaltyMint {
+    pub store: Pubkey,     // The store this mint is associated with
+    pub authority: Pubkey, // Authority who can mint/redeem tokens
+    pub total_supply: u64, // Total loyalty tokens in circulation
+}
+
+// Context: Redeem loyalty tokens from the mint
 #[derive(Accounts)]
 pub struct RedeemLoyaltyPoints<'info> {
     #[account(mut)]
-    pub user: Signer<'info>,
+    pub store: Account<'info, Store>,
     #[account(
         mut,
-        seeds = [b"user_profile", user.key().as_ref()],
-        bump
-    )]
-    pub user_profile: Account<'info, crate::user::UserProfile>,
-    /// CHECK: This is safe because we're only checking its key
-    pub store: AccountInfo<'info>,
-    #[account(
-        seeds = [b"store", store.key().as_ref()],
+        seeds = [b"loyalty_mint", store.key().as_ref()],
         bump,
-        constraint = store_account.is_active && store_account.loyalty_config.is_active
+        has_one = store,
+        has_one = authority
     )]
-    pub store_account: Account<'info, crate::store::Store>,
-    pub system_program: Program<'info, System>,
+    pub loyalty_mint: Account<'info, LoyaltyMint>,
+    pub authority: Signer<'info>,
 }
 
+// Context: Mint new loyalty tokens
 #[derive(Accounts)]
 pub struct MintLoyaltyTokens<'info> {
     #[account(mut)]
-    pub user: Signer<'info>,
+    pub store: Account<'info, Store>,
     #[account(
         mut,
-        seeds = [b"user_profile", user.key().as_ref()],
-        bump
+        seeds = [b"loyalty_mint", store.key().as_ref()],
+        bump,
+        has_one = store,
+        has_one = authority
     )]
-    pub user_profile: Account<'info, crate::user::UserProfile>,
-    #[account(
-        mut,
-        constraint = mint.decimals == 0 // Loyalty tokens have 0 decimals
-    )]
-    pub mint: Account<'info, Mint>,
-    #[account(
-        mut,
-        associated_token::mint = mint,
-        associated_token::authority = user
-    )]
-    pub token_account: Account<'info, TokenAccount>,
-    /// CHECK: We're using PDA for mint authority
-    #[account(
-        seeds = [b"loyalty_mint"],
-        bump
-    )]
-    pub mint_authority: AccountInfo<'info>,
-    pub token_program: Program<'info, Token>,
-    pub associated_token_program: Program<'info, AssociatedToken>,
-    pub system_program: Program<'info, System>,
-    pub rent: Sysvar<'info, Rent>,
+    pub loyalty_mint: Account<'info, LoyaltyMint>,
+    pub authority: Signer<'info>,
 }
 
+// Context: Initialize the loyalty mint account for a store
 #[derive(Accounts)]
 pub struct InitializeLoyaltyMint<'info> {
     #[account(mut)]
-    pub authority: Signer<'info>, // store owner or platform admin
-    #[account(
-        mut,
-        seeds = [b"store", store.key().as_ref()],
-        bump
-    )]
-    pub store: Account<'info, crate::store::Store>,
+    pub store: Account<'info, Store>,
     #[account(
         init,
         payer = authority,
-        mint::decimals = 0,
-        mint::authority = loyalty_mint_authority,
+        space = 8 + 32 + 32 + 8,
         seeds = [b"loyalty_mint", store.key().as_ref()],
         bump
     )]
-    pub loyalty_mint: Account<'info, Mint>,
-    /// CHECK: PDA for mint authority
-    #[account(
-        seeds = [b"loyalty_mint", store.key().as_ref()],
-        bump
-    )]
-    pub loyalty_mint_authority: UncheckedAccount<'info>,
-    pub token_program: Program<'info, Token>,
-    pub rent: Sysvar<'info, Rent>,
+    pub loyalty_mint: Account<'info, LoyaltyMint>,
+    #[account(mut)]
+    pub authority: Signer<'info>,
     pub system_program: Program<'info, System>,
 }

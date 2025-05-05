@@ -1,5 +1,3 @@
-// Store-related instructions, events, and accounts will be placed here.
-
 use crate::error::CustomError;
 use crate::types::{AdminRoleType, LoyaltyConfig};
 use anchor_lang::prelude::*;
@@ -14,116 +12,119 @@ pub fn register_store(
     loyalty_config: LoyaltyConfig,
 ) -> Result<()> {
     let store = &mut ctx.accounts.store;
-    store.owner = ctx.accounts.owner.key();
+    store.owner = ctx.accounts.authority.key();
     store.name = name;
     store.description = description;
     store.logo_uri = logo_uri;
-    store.created_at = Clock::get()?.unix_timestamp;
-    store.revenue = 0;
     store.loyalty_config = loyalty_config;
+    store.is_active = true;
+    store.revenue = 0;
     store.admin_roles = vec![AdminRole {
-        admin_pubkey: ctx.accounts.owner.key(),
+        admin_pubkey: ctx.accounts.authority.key(),
         role_type: AdminRoleType::Owner,
     }];
-    store.is_active = true;
+
     emit!(StoreRegistered {
         store_id,
-        owner: ctx.accounts.owner.key(),
+        owner: ctx.accounts.authority.key(),
         name: store.name.clone(),
-        created_at: store.created_at,
+        created_at: Clock::get().unwrap().unix_timestamp,
     });
+
     Ok(())
 }
 
 pub fn update_store(
     ctx: Context<UpdateStore>,
-    store_id: Pubkey,
+    _store_id: Pubkey,
     name: Option<String>,
     description: Option<String>,
     logo_uri: Option<String>,
     loyalty_config: Option<LoyaltyConfig>,
 ) -> Result<()> {
     let store = &mut ctx.accounts.store;
-    let signer = ctx.accounts.owner.key();
-    require!(
-        has_role(store, &signer, AdminRoleType::Owner)
-            || has_role(store, &signer, AdminRoleType::Manager),
-        CustomError::Unauthorized
-    );
+
     if let Some(name) = name {
         store.name = name;
     }
+
     if let Some(description) = description {
         store.description = description;
     }
+
     if let Some(logo_uri) = logo_uri {
         store.logo_uri = logo_uri;
     }
+
     if let Some(loyalty_config) = loyalty_config {
         store.loyalty_config = loyalty_config;
     }
+
     emit!(StoreUpdated {
-        store_id,
+        store_id: ctx.accounts.store.key(),
         updated_by: ctx.accounts.owner.key(),
-        updated_at: Clock::get()?.unix_timestamp,
+        updated_at: Clock::get().unwrap().unix_timestamp,
     });
+
     Ok(())
 }
 
 pub fn add_admin(
     ctx: Context<AddAdmin>,
-    store_id: Pubkey,
+    _store_id: Pubkey,
     admin_pubkey: Pubkey,
     role_type: AdminRoleType,
 ) -> Result<()> {
     let store = &mut ctx.accounts.store;
-    let signer = ctx.accounts.owner.key();
-    require!(
-        has_role(store, &signer, AdminRoleType::Owner),
-        CustomError::Unauthorized
-    );
+
     if store
         .admin_roles
         .iter()
-        .any(|role| role.admin_pubkey == admin_pubkey)
+        .any(|r| r.admin_pubkey == admin_pubkey)
     {
         return Err(CustomError::AdminAlreadyExists.into());
     }
+
     store.admin_roles.push(AdminRole {
         admin_pubkey,
         role_type: role_type.clone(),
     });
+
     emit!(AdminAdded {
-        store_id,
+        store_id: ctx.accounts.store.key(),
         admin_pubkey,
         role_type,
-        added_at: Clock::get()?.unix_timestamp,
+        added_at: Clock::get().unwrap().unix_timestamp,
     });
+
     Ok(())
 }
 
 pub fn remove_admin(
     ctx: Context<RemoveAdmin>,
-    store_id: Pubkey,
+    _store_id: Pubkey,
     admin_pubkey: Pubkey,
 ) -> Result<()> {
     let store = &mut ctx.accounts.store;
-    let signer = ctx.accounts.owner.key();
-    require!(
-        has_role(store, &signer, AdminRoleType::Owner),
-        CustomError::Unauthorized
-    );
-    if admin_pubkey == store.owner {
-        return Err(CustomError::CannotRemoveOwner.into());
+
+    if !store
+        .admin_roles
+        .iter()
+        .any(|r| r.admin_pubkey == admin_pubkey)
+    {
+        return Err(CustomError::AdminNotFound.into());
     }
+
     store
         .admin_roles
         .retain(|role| role.admin_pubkey != admin_pubkey);
+
     emit!(AdminRemoved {
-        store_id,
+        store_id: ctx.accounts.store.key(),
         admin_pubkey,
-        removed_at: Clock::get()?.unix_timestamp,
+        removed_at: Clock::get().unwrap().unix_timestamp,
     });
+
     Ok(())
 }
 
@@ -165,15 +166,15 @@ pub struct Store {
     pub name: String,
     pub description: String,
     pub logo_uri: String,
-    pub created_at: i64,
-    pub revenue: u64,
     pub loyalty_config: LoyaltyConfig,
-    pub admin_roles: Vec<AdminRole>,
     pub is_active: bool,
+    pub revenue: u64,
+    pub admin_roles: Vec<AdminRole>,
 }
 
 impl Store {
-    pub const LEN: usize = 32 + 4 + 200 + 4 + 200 + 8 + 8 + 1 + 4 + (32 + 1) * 5 + 1;
+    pub const LEN: usize =
+        8 + 32 + (4 + 200) + (4 + 500) + (4 + 200) + 16 + 1 + 8 + (4 + (33 * 10));
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
@@ -188,14 +189,14 @@ pub struct AdminRole {
 pub struct RegisterStore<'info> {
     #[account(
         init,
-        payer = owner,
-        space = 8 + Store::LEN,
+        payer = authority,
+        space = Store::LEN,
         seeds = [b"store", store_id.as_ref()],
         bump
     )]
     pub store: Account<'info, Store>,
     #[account(mut)]
-    pub owner: Signer<'info>,
+    pub authority: Signer<'info>,
     pub system_program: Program<'info, System>,
 }
 
@@ -206,7 +207,7 @@ pub struct UpdateStore<'info> {
         mut,
         seeds = [b"store", store_id.as_ref()],
         bump,
-        constraint = store.owner == owner.key() || store.admin_roles.iter().any(|role| role.admin_pubkey == owner.key())
+        has_one = owner
     )]
     pub store: Account<'info, Store>,
     pub owner: Signer<'info>,
@@ -219,7 +220,7 @@ pub struct AddAdmin<'info> {
         mut,
         seeds = [b"store", store_id.as_ref()],
         bump,
-        constraint = store.owner == owner.key()
+        has_one = owner
     )]
     pub store: Account<'info, Store>,
     pub owner: Signer<'info>,
@@ -232,7 +233,7 @@ pub struct RemoveAdmin<'info> {
         mut,
         seeds = [b"store", store_id.as_ref()],
         bump,
-        constraint = store.owner == owner.key()
+        has_one = owner
     )]
     pub store: Account<'info, Store>,
     pub owner: Signer<'info>,

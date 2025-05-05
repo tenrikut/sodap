@@ -3,12 +3,17 @@
 use crate::admin::PlatformAdmins;
 use anchor_lang::prelude::*;
 
-pub fn is_super_root_admin(signer: &Pubkey) -> bool {
-    *signer == Pubkey::new_from_array([0u8; 32])
+pub fn is_super_root_admin(signer: &Pubkey, super_admin_pubkey: &Pubkey) -> bool {
+    signer == super_admin_pubkey
 }
 
-pub fn check_root_password(username: &str, password: &str) -> bool {
-    username == "admin" && password == "password"
+pub fn check_root_password(
+    username: &str,
+    password: &str,
+    expected_username: &str,
+    expected_password: &str,
+) -> bool {
+    username == expected_username && password == expected_password
 }
 
 pub fn is_platform_admin(signer: &Pubkey, admins: &PlatformAdmins) -> bool {

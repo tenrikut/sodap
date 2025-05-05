@@ -1,48 +1,39 @@
-// Shared enums and structs (TokenizedType, MintStatus, TransactionStatus, AnomalyFlag, LoyaltyConfig, AdminRoleType, etc.) will be placed here.
-
 use anchor_lang::prelude::*;
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
-pub struct LoyaltyConfig {
-    pub points_per_dollar: u64,
-    pub minimum_purchase: u64,
-    pub reward_percentage: u64,
-    pub is_active: bool,
-}
-
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug, PartialEq)]
 pub enum AdminRoleType {
-    SuperRootAdmin,
-    PlatformAdmin,
     Owner,
     Manager,
-    Cashier,
+    Viewer,
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug, PartialEq)]
 pub enum TokenizedType {
-    None,
-    SplToken,
+    Digital,
+    Physical,
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug, PartialEq)]
+pub enum TransactionStatus {
+    Pending,
+    Completed,
+    Failed,
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug, PartialEq)]
+pub enum AnomalyFlag {
+    None,
+    Suspicious,
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug, PartialEq)]
 pub enum MintStatus {
     NotMinted,
     Minted,
-    Failed,
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq)]
-pub enum TransactionStatus {
-    Success,
-    Failed,
-    Pending,
-}
-
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq)]
-pub enum AnomalyFlag {
-    HighValue,
-    MultiplePurchases,
-    UnusualTime,
-    Other,
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug, PartialEq)]
+pub struct LoyaltyConfig {
+    pub points_per_dollar: u64,
+    pub redemption_rate: u64,
 }
