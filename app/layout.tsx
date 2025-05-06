@@ -7,6 +7,7 @@ import SolanaWalletProvider from "./providers/WalletProvider";
 import NavBar from "./components/NavBar";
 import { Inter } from "next/font/google";
 import { CartProvider } from "./contexts/CartContext";
+import { AuthProvider } from "./contexts/AuthContext";
 import "@/styles/globals.css";
 const inter = Inter({ subsets: ["latin"] });
 
@@ -19,16 +20,18 @@ export default function RootLayout({
     <html lang="en">
       <body className={inter.className}>
         <ChakraProvider>
-          <SolanaWalletProvider>
-            <SodapProvider>
-              <CartProvider>
-                <NavBar />
-                <Box as="main" pt="70px" px={4} maxW="container.xl" mx="auto">
-                  {children}
-                </Box>
-              </CartProvider>
-            </SodapProvider>
-          </SolanaWalletProvider>
+          <AuthProvider>
+            <SolanaWalletProvider>
+              <SodapProvider>
+                <CartProvider>
+                  <NavBar />
+                  <Box as="main" pt="70px" px={4} maxW="container.xl" mx="auto">
+                    {children}
+                  </Box>
+                </CartProvider>
+              </SodapProvider>
+            </SolanaWalletProvider>
+          </AuthProvider>
         </ChakraProvider>
       </body>
     </html>

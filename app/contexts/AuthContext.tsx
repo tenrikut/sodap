@@ -1,3 +1,5 @@
+"use client";
+
 import React, {
   createContext,
   useContext,
@@ -12,104 +14,160 @@ import {
   AuthChangeEvent,
 } from "@supabase/supabase-js";
 import { createClient } from "@supabase/supabase-js";
-import { AuthContextType, AuthError, AuthSession } from "types/sodap";
 
+// Simplified AuthContextType for demo purposes
+interface AuthContextType {
+  user: AuthUser | null;
+  session: Session | null;
+  loading: boolean;
+  error: any | null;
+  login: (username: string, password: string) => Promise<boolean>;
+  logout: () => void;
+  isAuthenticated: boolean;
+}
+
+// Only create Supabase client if credentials are available
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "";
-const supabase: SupabaseClient = createClient(supabaseUrl, supabaseAnonKey);
+
+// Create a dummy supabase client for demo purposes if no credentials
+let supabase: SupabaseClient | null = null;
+if (supabaseUrl && supabaseAnonKey) {
+  try {
+    supabase = createClient(supabaseUrl, supabaseAnonKey);
+  } catch (error) {
+    console.error("Failed to initialize Supabase client:", error);
+    // Continue without Supabase
+  }
+}
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<AuthUser | null>(null);
-  const [session, setSession] = useState<AuthSession | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<AuthError | null>(null);
+  const [error, setError] = useState<any | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
+  // Check for existing auth on mount
   useEffect(() => {
-    const { data: listener } = supabase.auth.onAuthStateChange(
-      (event: AuthChangeEvent, session: Session | null) => {
-        if (session?.user) {
-          setUser(session.user);
-          setSession({
-            user: {
-              id: session.user.id,
-              email: session.user.email!,
-              createdAt: new Date(session.user.created_at!).getTime(),
-            },
-            accessToken: session.access_token,
-            refreshToken: session.refresh_token!,
-            expiresAt: session.expires_at ? session.expires_at * 1000 : 0,
-          });
-        } else {
-          setUser(null);
-          setSession(null);
+    // Check if user is logged in from localStorage
+    const checkAuth = () => {
+      const isLoggedIn = localStorage.getItem("sodap_auth") === "true";
+      const storedUser = localStorage.getItem("sodap_user");
+      
+      if (isLoggedIn && storedUser) {
+        setIsAuthenticated(true);
+        try {
+          setUser(JSON.parse(storedUser));
+        } catch (e) {
+          // Invalid stored user
+          localStorage.removeItem("sodap_user");
         }
-        setLoading(false);
       }
-    );
-    return () => {
-      listener?.subscription.unsubscribe();
+      setLoading(false);
     };
+
+    checkAuth();
+    
+    // Also listen for Supabase auth changes if using Supabase
+    if (supabase) {
+      const { data: listener } = supabase.auth.onAuthStateChange(
+        (event: AuthChangeEvent, session: Session | null) => {
+          setSession(session);
+          setUser(session?.user ?? null);
+          setIsAuthenticated(!!session?.user);
+          setLoading(false);
+        }
+      );
+
+      return () => {
+        listener?.subscription.unsubscribe();
+      };
+    }
   }, []);
 
-  const register = async (email: string, password: string) => {
+  // Demo login function
+  const login = async (username: string, password: string): Promise<boolean> => {
     setLoading(true);
     setError(null);
-    const { error, data } = await supabase.auth.signUp({ email, password });
-    if (error) {
-      setError({ message: error.message });
+    
+    try {
+      // Demo authentication logic
+      if (
+        (username === "sodap" && password === "sodap") ||
+        (username === "tamkin" && password === "test1234")
+      ) {
+        // Create a mock user
+        const mockUser = {
+          id: username === "sodap" ? "sodap-user-id" : "tamkin-user-id",
+          email: username === "sodap" ? "sodap@example.com" : "miladili@outlook.de",
+          user_metadata: {
+            username,
+            wallet: username === "tamkin" ? "9yg11hJpMpreQmqtCoVxR55DgbJ248wiT4WuQhksEz2J" : null
+          }
+        };
+        
+        // Store auth state in localStorage
+        localStorage.setItem("sodap_auth", "true");
+        localStorage.setItem("sodap_user", JSON.stringify(mockUser));
+        
+        setUser(mockUser as any);
+        setIsAuthenticated(true);
+        setLoading(false);
+        return true;
+      }
+      
+      // Try Supabase login if credentials don't match demo users and Supabase is available
+      if (supabase) {
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email: username.includes('@') ? username : `${username}@example.com`,
+          password,
+        });
+        
+        if (error) {
+          throw error;
+        }
+        
+        return !!data.user;
+      }
+      
+      setError("Invalid credentials");
+      return false;
+    } catch (err) {
+      setError(err);
+      setLoading(false);
+      return false;
     }
-    setLoading(false);
   };
 
-  const login = async (email: string, password: string) => {
-    setLoading(true);
-    setError(null);
-    const { error, data } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-    if (error) {
-      setError({ message: error.message });
+  // Logout function
+  const logout = () => {
+    // Clear localStorage
+    localStorage.removeItem("sodap_auth");
+    localStorage.removeItem("sodap_user");
+    
+    // Clear state
+    setUser(null);
+    setIsAuthenticated(false);
+    
+    // Also sign out from Supabase if using it
+    if (supabase) {
+      supabase.auth.signOut();
     }
-    setLoading(false);
-  };
-
-  const logout = async () => {
-    setLoading(true);
-    setError(null);
-    await supabase.auth.signOut();
-    setLoading(false);
-  };
-
-  const resetPassword = async (email: string) => {
-    setLoading(true);
-    setError(null);
-    const { error } = await supabase.auth.resetPasswordForEmail(email);
-    if (error) {
-      setError({ message: error.message });
-    }
-    setLoading(false);
   };
 
   return (
     <AuthContext.Provider
       value={{
-        user: user
-          ? {
-              id: user.id,
-              email: user.email || "",
-              createdAt: new Date(user.created_at!).getTime(),
-            }
-          : null,
+        user,
         session,
         loading,
         error,
-        register,
         login,
         logout,
-        resetPassword,
+        isAuthenticated,
       }}
     >
       {children}
@@ -119,7 +177,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (!context) {
+  if (context === undefined) {
     throw new Error("useAuth must be used within an AuthProvider");
   }
   return context;
