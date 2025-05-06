@@ -1,3 +1,6 @@
+// Moved from state/types.rs
+// Please add your types here, or move the content from state/types.rs
+
 use anchor_lang::prelude::*;
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug, PartialEq)]

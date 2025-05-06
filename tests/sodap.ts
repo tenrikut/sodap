@@ -19,7 +19,7 @@ import { BN } from "@coral-xyz/anchor";
 import { assert } from "chai";
 import { v4 as uuidv4 } from "uuid";
 import * as token from "@solana/spl-token";
-
+"@/types/*": ["src/types/*"];
 // Main test suite for the Sodap program
 describe("sodap", () => {
   // Initialize provider and program instances
@@ -80,7 +80,12 @@ describe("sodap", () => {
       mintAccount.publicKey,
       storeKeypair.publicKey
     );
-
+    const loyaltyConfig = {
+      pointsPerDollar: new BN(10),
+      minimumPurchase: new BN(100),
+      rewardPercentage: new BN(5),
+      isActive: true,
+    };
     const createAssociatedTokenAccountInstruction =
       token.Token.createAssociatedTokenAccountInstruction(
         ASSOCIATED_TOKEN_PROGRAM_ID,

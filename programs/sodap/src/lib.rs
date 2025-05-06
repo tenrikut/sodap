@@ -1,22 +1,17 @@
+use crate::instructions::{admin, loyalty, product, store, user};
 use anchor_lang::prelude::*;
-
 // Declare the program ID used by Anchor
 declare_id!("4eLJ3QGiNrPN6UUr2fNxq6tUZqFdBMVpXkL2MhsKNriv");
 
-// Import context structs from each module
-pub mod admin;
-pub mod error;
-pub mod loyalty;
-pub mod product;
-pub mod store;
-pub mod types;
-pub mod user;
-pub mod utils;
+mod error;
+mod types;
+mod utils;
 
-use crate::loyalty::{InitializeLoyaltyMint, MintLoyaltyTokens, RedeemLoyaltyPoints};
-use crate::product::{DeactivateProduct, PurchaseCart, RegisterProduct, UpdateProduct};
-use crate::store::{AddAdmin, RegisterStore, RemoveAdmin, UpdateStore};
-use crate::user::{CreateOrUpdateUserProfile, ScanAndPurchase};
+pub mod instructions;
+
+mod state;
+use state::*;
+use types::*;
 
 #[program]
 pub mod sodap {
@@ -34,7 +29,7 @@ pub mod sodap {
         name: String,
         description: String,
         logo_uri: String,
-        loyalty_config: types::LoyaltyConfig,
+        loyalty_config: LoyaltyConfig,
     ) -> Result<()> {
         store::register_store(ctx, store_id, name, description, logo_uri, loyalty_config)
     }
@@ -45,7 +40,7 @@ pub mod sodap {
         name: Option<String>,
         description: Option<String>,
         logo_uri: Option<String>,
-        loyalty_config: Option<types::LoyaltyConfig>,
+        loyalty_config: Option<LoyaltyConfig>,
     ) -> Result<()> {
         store::update_store(ctx, store_id, name, description, logo_uri, loyalty_config)
     }
@@ -54,7 +49,7 @@ pub mod sodap {
         ctx: Context<AddAdmin>,
         store_id: Pubkey,
         admin_pubkey: Pubkey,
-        role_type: types::AdminRoleType,
+        role_type: AdminRoleType,
     ) -> Result<()> {
         store::add_admin(ctx, store_id, admin_pubkey, role_type)
     }
@@ -73,7 +68,7 @@ pub mod sodap {
         product_uuid: [u8; 16],
         price: u64,
         stock: u64,
-        tokenized_type: types::TokenizedType,
+        tokenized_type: TokenizedType,
         metadata_uri: String,
     ) -> Result<()> {
         product::register_product(
@@ -92,7 +87,7 @@ pub mod sodap {
         new_price: Option<u64>,
         new_stock: Option<u64>,
         new_metadata_uri: Option<String>,
-        new_tokenized_type: Option<types::TokenizedType>,
+        new_tokenized_type: Option<TokenizedType>,
     ) -> Result<()> {
         product::update_product(
             ctx,
@@ -117,8 +112,8 @@ pub mod sodap {
         quantities: Vec<u64>,
         total_amount_paid: u64,
         gas_fee: u64,
-        status: types::TransactionStatus,
-        anomaly_flag: Option<types::AnomalyFlag>,
+        status: TransactionStatus,
+        anomaly_flag: Option<AnomalyFlag>,
     ) -> Result<()> {
         product::purchase_cart(
             ctx,
@@ -166,6 +161,7 @@ pub mod sodap {
         user::scan_and_purchase(ctx, product_uuids, quantities, store_id)
     }
 }
+
 #[derive(Accounts)]
 pub struct Initialize<'info> {
     #[account(mut)]

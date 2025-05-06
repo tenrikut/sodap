@@ -12,7 +12,11 @@ import {
   useToast,
 } from "@chakra-ui/react";
 
-export default function StoreSetup() {
+interface StoreSetupProps {
+  onComplete?: () => void;
+}
+
+export default function StoreSetup({ onComplete }: StoreSetupProps) {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [loading, setLoading] = useState(false);
@@ -43,6 +47,11 @@ export default function StoreSetup() {
 
       setName("");
       setDescription("");
+      
+      // Call the onComplete callback if provided
+      if (onComplete) {
+        onComplete();
+      }
     } catch (error) {
       toast({
         title: "Error creating store",

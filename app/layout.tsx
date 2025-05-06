@@ -1,12 +1,13 @@
 "use client";
-
+// app/layout.tsx
+import "@/styles/globals.css";
 import { ChakraProvider, Box } from "@chakra-ui/react";
-import { SodapProvider } from "@/contexts/SodapContext";
-import SolanaWalletProvider from "@/providers/WalletProvider";
-import NavBar from "@/components/NavBar";
+import { SodapProvider } from "./contexts/SodapContext";
+import SolanaWalletProvider from "./providers/WalletProvider";
+import NavBar from "./components/NavBar";
 import { Inter } from "next/font/google";
-import "./globals.css";
-
+import { CartProvider } from "./contexts/CartContext";
+import "@/styles/globals.css";
 const inter = Inter({ subsets: ["latin"] });
 
 export default function RootLayout({
@@ -20,10 +21,12 @@ export default function RootLayout({
         <ChakraProvider>
           <SolanaWalletProvider>
             <SodapProvider>
-              <NavBar />
-              <Box as="main" pt="70px" px={4} maxW="container.xl" mx="auto">
-                {children}
-              </Box>
+              <CartProvider>
+                <NavBar />
+                <Box as="main" pt="70px" px={4} maxW="container.xl" mx="auto">
+                  {children}
+                </Box>
+              </CartProvider>
             </SodapProvider>
           </SolanaWalletProvider>
         </ChakraProvider>

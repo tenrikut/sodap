@@ -104,3 +104,7 @@ export interface AuthContextType {
   logout: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
 }
+
+// Import the Sodap type from the target directory
+import { Sodap } from "../../target/types/sodap";
+export type { Sodap };

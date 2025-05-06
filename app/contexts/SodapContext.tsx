@@ -16,7 +16,8 @@ import {
   PlatformAdmin,
   SuperRootAdmin,
   AdminAction,
-} from "./types";
+} from "../types/sodap";
+
 import { v4 as uuidv4 } from "uuid";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { PublicKey } from "@solana/web3.js";
@@ -94,8 +95,10 @@ export const SodapContext = createContext<SodapContextType>({
     description: "",
     price: 0,
     inventory: 0,
-    isActive: false,
+    imageUrl: "",
+    category: "",
     tokenizedType: "None",
+    isActive: false,
   }),
   purchaseCart: async () => ({
     items: [],
@@ -365,7 +368,7 @@ export const SodapProvider = ({ children }: { children: ReactNode }) => {
       inventory: 25,
       imageUrl: "https://via.placeholder.com/150",
       category: "Unknown",
-      tokenizedType: "None",
+      tokenizedType: "None" as "None" | "SplToken",
       isActive: true,
     };
   };

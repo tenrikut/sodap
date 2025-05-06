@@ -1,5 +1,3 @@
-// Please add your error types here, or move the content from state/error.rs
-
 use anchor_lang::prelude::*;
 
 #[error_code]

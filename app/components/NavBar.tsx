@@ -17,6 +17,12 @@ const NavBar = () => {
   const userRole = context?.userRole;
   const [mounted, setMounted] = useState(false);
 
+  // Move useColorModeValue hooks here
+  const navBg = useColorModeValue("white", "gray.800");
+  const navColor = useColorModeValue("gray.600", "white");
+  const borderBottomColor = useColorModeValue("gray.200", "gray.700");
+  const logoColor = useColorModeValue("purple.600", "purple.300");
+
   useEffect(() => {
     setMounted(true);
   }, []);
@@ -28,10 +34,10 @@ const NavBar = () => {
   return (
     <Box
       as="nav"
-      bg={useColorModeValue("white", "gray.800")}
-      color={useColorModeValue("gray.600", "white")}
+      bg={navBg}
+      color={navColor}
       borderBottom="1px"
-      borderBottomColor={useColorModeValue("gray.200", "gray.700")}
+      borderBottomColor={borderBottomColor}
       px={4}
       py={3}
       position="fixed"
@@ -47,11 +53,7 @@ const NavBar = () => {
       >
         <HStack spacing={8} alignItems="center">
           <Link as={NextLink} href="/" _hover={{ textDecoration: "none" }}>
-            <Text
-              fontSize="xl"
-              fontWeight="bold"
-              color={useColorModeValue("purple.600", "purple.300")}
-            >
+            <Text fontSize="xl" fontWeight="bold" color={logoColor}>
               SoDap
             </Text>
           </Link>

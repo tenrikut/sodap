@@ -1,6 +1,5 @@
 // Helper functions (has_role, is_super_root_admin, check_root_password, is_platform_admin, etc.) will be placed here.
-
-use crate::admin::PlatformAdmins;
+use crate::state::admin::PlatformAdmins;
 use anchor_lang::prelude::*;
 
 pub fn is_super_root_admin(signer: &Pubkey, super_admin_pubkey: &Pubkey) -> bool {
