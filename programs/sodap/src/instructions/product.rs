@@ -1,7 +1,14 @@
 use crate::types::{AnomalyFlag, TokenizedType, TransactionStatus};
 use anchor_lang::prelude::*;
 
-use crate::state::product::{DeactivateProduct, PurchaseCart, RegisterProduct, UpdateProduct};
+use crate::error::CustomError;
+use crate::state::product::Product; // your existing product account
+use crate::state::product::{Purchase, PurchaseCart};
+use crate::types::{AnomalyFlag, TransactionStatus};
+use anchor_lang::{prelude::*, system_program};
+
+use crate::state::product::{DeactivateProduct, , RegisterProduct, UpdateProduct};
+
 // Product instructions
 pub fn register_product(
     ctx: Context<RegisterProduct>,

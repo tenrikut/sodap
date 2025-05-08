@@ -50,4 +50,6 @@ pub enum CustomError {
     InvalidMetadataUri,
     #[msg("Admin not found")]
     AdminNotFound,
+    #[msg("Price overflow when summing cart")]
+    PriceOverflow,
 }

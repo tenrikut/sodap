@@ -56,9 +56,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const checkAuth = () => {
       const isLoggedIn = localStorage.getItem("sodap_auth") === "true";
       const storedUser = localStorage.getItem("sodap_user");
-      
+
       if (isLoggedIn && storedUser) {
-        setIsAuthenticated(true);
+        setIsAuthenticated(false);
         try {
           setUser(JSON.parse(storedUser));
         } catch (e) {
@@ -70,7 +70,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     };
 
     checkAuth();
-    
+
     // Also listen for Supabase auth changes if using Supabase
     if (supabase) {
       const { data: listener } = supabase.auth.onAuthStateChange(
@@ -89,10 +89,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   // Demo login function
-  const login = async (username: string, password: string): Promise<boolean> => {
+  const login = async (
+    username: string,
+    password: string
+  ): Promise<boolean> => {
     setLoading(true);
     setError(null);
-    
+
     try {
       // Demo authentication logic
       if (
@@ -102,37 +105,41 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         // Create a mock user
         const mockUser = {
           id: username === "sodap" ? "sodap-user-id" : "tamkin-user-id",
-          email: username === "sodap" ? "sodap@example.com" : "miladili@outlook.de",
+          email:
+            username === "sodap" ? "sodap@example.com" : "miladili@outlook.de",
           user_metadata: {
             username,
-            wallet: username === "tamkin" ? "9yg11hJpMpreQmqtCoVxR55DgbJ248wiT4WuQhksEz2J" : null
-          }
+            wallet:
+              username === "tamkin"
+                ? "9yg11hJpMpreQmqtCoVxR55DgbJ248wiT4WuQhksEz2J"
+                : null,
+          },
         };
-        
+
         // Store auth state in localStorage
         localStorage.setItem("sodap_auth", "true");
         localStorage.setItem("sodap_user", JSON.stringify(mockUser));
-        
+
         setUser(mockUser as any);
         setIsAuthenticated(true);
         setLoading(false);
         return true;
       }
-      
+
       // Try Supabase login if credentials don't match demo users and Supabase is available
       if (supabase) {
         const { data, error } = await supabase.auth.signInWithPassword({
-          email: username.includes('@') ? username : `${username}@example.com`,
+          email: username.includes("@") ? username : `${username}@example.com`,
           password,
         });
-        
+
         if (error) {
           throw error;
         }
-        
+
         return !!data.user;
       }
-      
+
       setError("Invalid credentials");
       return false;
     } catch (err) {
@@ -147,11 +154,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     // Clear localStorage
     localStorage.removeItem("sodap_auth");
     localStorage.removeItem("sodap_user");
-    
+
     // Clear state
     setUser(null);
     setIsAuthenticated(false);
-    
+
     // Also sign out from Supabase if using it
     if (supabase) {
       supabase.auth.signOut();

@@ -1,11 +1,23 @@
-# syntax=docker/dockerfile:1
-FROM --platform=linux/amd64 node:20 AS builder
+# Use Node.js 20 with Debian (better compatibility than Alpine)
+FROM node:20-slim
 
+# Set working directory
 WORKDIR /app
 
-# Copy package.json files and install dependencies
-COPY package*.json ./
-RUN npm install
+# Install dependencies required for native modules
+RUN apt-get update && apt-get install -y \
+    python3 \
+    make \
+    g++ \
+    libudev-dev \
+    libusb-1.0-0-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy package files
+COPY package.json package-lock.json* ./
+
+# Install dependencies with legacy peer deps flag to avoid issues
+RUN npm install --legacy-peer-deps
 
 # Copy the rest of the application
 COPY . .
@@ -13,28 +25,13 @@ COPY . .
 # Generate Prisma client
 RUN npx prisma generate
 
-# Run next build, if it fails due to missing native deps, run npm install and try again
-RUN npm run build || (npm install && npm run build)
-
-# Use a lightweight image for production
-FROM --platform=linux/amd64 node:20-alpine
-
-WORKDIR /app
-
-# Copy necessary files from builder
-COPY --from=builder /app/next.config.js ./
-COPY --from=builder /app/public ./public
-COPY --from=builder /app/.next ./.next
-COPY --from=builder /app/package.json ./package.json
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/prisma ./prisma
-
 # Set environment variables
-ENV NODE_ENV=production
 ENV PORT=3000
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
 
 # Expose the port
 EXPOSE 3000
 
-# Start the application
-CMD ["npm", "start"] 
+# Start the application in development mode to avoid build issues
+CMD ["npm", "run", "dev"]

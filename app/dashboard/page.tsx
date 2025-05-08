@@ -2,149 +2,213 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import StoreSetup from "../components/store/StoreSetup";
 import ProductList from "../components/store/ProductList";
 import AddProduct from "../components/store/AddProduct";
-import { SodapProvider } from "../contexts/SodapContext";
+import { SodapContext } from "../contexts/SodapContext";
 import { motion } from "framer-motion";
 
 export default function Dashboard() {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState("products");
   const [isAddingProduct, setIsAddingProduct] = useState(false);
+  const [selectedRole, setSelectedRole] = useState<"platform" | "store" | null>(
+    null
+  );
+  const [storeRole, setStoreRole] = useState<"manager" | "staff">("manager");
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  const handleRoleSelect = (role: "platform" | "store") => {
+    setSelectedRole(role);
+    setError("");
+  };
+
+  const handleLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setError("");
+
+    // Simulate authentication based on selected role
+    setTimeout(() => {
+      if (selectedRole === "platform") {
+        // Platform admin login
+        if (username === "admin" && password === "adminpass") {
+          router.push("/platform-admin/dashboard");
+        } else {
+          setError("Invalid platform administrator credentials.");
+          setIsLoading(false);
+        }
+      } else if (selectedRole === "store") {
+        // Store admin login
+        if (
+          (storeRole === "manager" &&
+            username === "manager" &&
+            password === "managerpass") ||
+          (storeRole === "staff" &&
+            username === "staff" &&
+            password === "staffpass")
+        ) {
+          router.push(`/store-admin/dashboard?role=${storeRole}`);
+        } else {
+          setError("Invalid store administrator credentials.");
+          setIsLoading(false);
+        }
+      }
+    }, 800);
+  };
 
   return (
-    <SodapProvider>
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-purple-100">
-        <div className="container mx-auto px-4 py-8">
-          <motion.div 
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-            className="flex justify-between items-center mb-6"
-          >
-            <div className="flex items-center">
-              <div className="w-10 h-10 bg-purple-600 rounded-full flex items-center justify-center mr-3">
-                <span className="text-white text-xl font-bold">S</span>
-              </div>
-              <h1 className="text-3xl font-bold text-purple-900">Store Dashboard</h1>
-            </div>
-            <Link 
-              href="/" 
-              className="flex items-center px-4 py-2 text-purple-600 hover:text-purple-800 transition-colors rounded-lg hover:bg-purple-100"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-              </svg>
-              Back to Home
-            </Link>
-          </motion.div>
-
-          <motion.div 
-            initial={{ opacity: 0, scale: 0.95 }}
+    <div
+        style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          width: "100vw",
+          height: "100vh",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          background:
+            "linear-gradient(to bottom right, #dbeafe, #fff, #bfdbfe)",
+          zIndex: 9999,
+        }}
+      >
+        <motion.div
+          initial={{ opacity: 0, scale: 0.96 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.5 }}
+          className="max-w-sm w-full flex flex-col items-center justify-center"
+        >
+          <motion.div
+            initial={{ opacity: 0, scale: 0.98 }}
             animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.5, delay: 0.2 }}
-            className="bg-white shadow-xl rounded-2xl p-8 mb-6"
+            transition={{ duration: 0.5, delay: 0.1 }}
+            className="bg-white/80 shadow-[0_8px_32px_0_rgba(31,38,135,0.18)] rounded-[2.5rem] px-10 py-14 flex flex-col items-center justify-center backdrop-blur-xl border border-blue-100 animate-fade-in"
           >
-            <div className="border-b border-gray-200 mb-8">
-              <nav className="flex space-x-8">
-                <button
-                  onClick={() => setActiveTab("setup")}
-                  className={`pb-4 px-1 relative ${
-                    activeTab === "setup"
-                      ? "text-purple-700 font-medium"
-                      : "text-gray-500 hover:text-gray-700"
-                  }`}
-                >
-                  <div className="flex items-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
-                    Store Setup
-                  </div>
-                  {activeTab === "setup" && (
-                    <motion.div
-                      layoutId="activeTabIndicator"
-                      className="absolute bottom-0 left-0 right-0 h-0.5 bg-purple-600"
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      transition={{ duration: 0.3 }}
-                    />
-                  )}
-                </button>
-                <button
-                  onClick={() => setActiveTab("products")}
-                  className={`pb-4 px-1 relative ${
-                    activeTab === "products"
-                      ? "text-purple-700 font-medium"
-                      : "text-gray-500 hover:text-gray-700"
-                  }`}
-                >
-                  <div className="flex items-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
-                    </svg>
-                    Products
-                  </div>
-                  {activeTab === "products" && (
-                    <motion.div
-                      layoutId="activeTabIndicator"
-                      className="absolute bottom-0 left-0 right-0 h-0.5 bg-purple-600"
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      transition={{ duration: 0.3 }}
-                    />
-                  )}
-                </button>
-              </nav>
+            {/* Logo */}
+            <div className="mb-10 flex flex-col items-center">
+              <div
+                style={{
+                  color: "#a78bfa",
+                  fontWeight: 700,
+                  fontSize: 80,
+                  marginBottom: 8,
+                }}
+              >
             </div>
-
-            <motion.div
-              key={activeTab}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3 }}
-            >
-              {activeTab === "setup" && (
-                <div className="bg-purple-50 p-6 rounded-xl">
-                  <StoreSetup onComplete={() => {}} />
-                </div>
-              )}
-
-              {activeTab === "products" && (
-                <>
-                  {isAddingProduct ? (
-                    <AddProduct
-                      onCancel={() => setIsAddingProduct(false)}
-                      onSubmit={() => setIsAddingProduct(false)}
-                      isOpen={isAddingProduct}
-                    />
+          </div>
+          {/* Title and Role Select */}
+          <div className="w-full max-w-xs mx-auto flex flex-col items-center">
+            <div className="flex flex-col w-full gap-3 mb-8">
+              <button
+                className={`w-full py-3 rounded-xl font-medium text-base transition-all focus:outline-none focus:ring-2 focus:ring-blue-300 ${selectedRole === "platform" ? "bg-blue-400 text-white" : "bg-blue-100 hover:bg-blue-200 text-blue-700"}`}
+                onClick={() => handleRoleSelect("platform")}
+                type="button"
+              >
+                Platform Administrator
+              </button>
+              <button
+                className={`w-full py-3 rounded-xl font-medium text-base transition-all focus:outline-none focus:ring-2 focus:ring-blue-300 ${selectedRole === "store" ? "bg-blue-400 text-white" : "bg-blue-100 hover:bg-blue-200 text-blue-700"}`}
+                onClick={() => handleRoleSelect("store")}
+                type="button"
+              >
+                Store Administrator
+              </button>
+            </div>
+            {selectedRole === "store" && (
+              <div className="flex gap-3 mb-4">
+                <button
+                  type="button"
+                  className={`flex-1 py-2 rounded-lg text-base font-medium transition-all ${storeRole === "manager" ? "bg-blue-200 text-blue-800" : "bg-blue-50 text-blue-500"}`}
+                  onClick={() => setStoreRole("manager")}
+                >
+                  Store Manager
+                </button>
+                <button
+                  type="button"
+                  className={`flex-1 py-2 rounded-lg text-base font-medium transition-all ${storeRole === "staff" ? "bg-blue-200 text-blue-800" : "bg-blue-50 text-blue-500"}`}
+                  onClick={() => setStoreRole("staff")}
+                >
+                  Store Staff
+                </button>
+              </div>
+            )}
+            <form onSubmit={handleLogin}>
+              <input
+                type="text"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                placeholder="Username"
+                className="w-full py-3 rounded-lg text-base font-medium text-gray-700 bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-300"
+              />
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Password"
+                className="w-full py-3 rounded-lg text-base font-medium text-gray-700 bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-300"
+              />
+              <button
+                type="submit"
+                disabled={isLoading || !username || !password}
+                className="w-full py-4 mt-2 rounded-2xl bg-blue-500 hover:bg-blue-600 text-white text-lg font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg focus:ring-2 focus:ring-blue-300 mx-auto"
+              >
+                {isLoading ? (
+                  <div className="flex items-center justify-center">
+                    <svg
+                      className="animate-spin h-5 w-5 mr-2"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      ></circle>
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      ></path>
+                    </svg>
+                    Signing in...
+                  </div>
+                ) : (
+                  "Sign in"
+                )}
+              </button>
+            </form>
+            {/* Demo credentials */}
+            <div className="mt-8 text-center text-xs text-gray-400">
+              <p>
+                {selectedRole === "platform" ? (
+                  <>
+                    <span className="font-medium">Demo:</span> admin / adminpass
+                  </>
+                ) : selectedRole === "store" ? (
+                  storeRole === "manager" ? (
+                    <>
+                      <span className="font-medium">Demo:</span> manager / managerpass
+                    </>
                   ) : (
                     <>
-                      <div className="flex justify-end mb-6">
-                        <motion.button
-                          whileHover={{ scale: 1.05 }}
-                          whileTap={{ scale: 0.95 }}
-                          onClick={() => setIsAddingProduct(true)}
-                          className="bg-purple-600 text-white py-2 px-5 rounded-lg hover:bg-purple-700 transition-colors shadow-md hover:shadow-lg flex items-center"
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                          </svg>
-                          Add Product
-                        </motion.button>
-                      </div>
-                      <div className="bg-purple-50 p-6 rounded-xl">
-                        <ProductList />
-                      </div>
+                      <span className="font-medium">Demo:</span> staff / staffpass
                     </>
-                  )}
-                </>
-              )}
-            </motion.div>
-          </motion.div>
-        </div>
-      </div>
-    </SodapProvider>
+                  )
+                ) : null}
+              </p>
+            </div>
+          </div>
+        </motion.div>
+      </motion.div>
+    </div>
   );
 }

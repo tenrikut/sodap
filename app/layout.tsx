@@ -1,14 +1,17 @@
 "use client";
 // app/layout.tsx
-import "@/styles/globals.css";
-import { ChakraProvider, Box } from "@chakra-ui/react";
+import "./globals.css";
+import { ChakraProvider } from "@chakra-ui/react";
+
 import { SodapProvider } from "./contexts/SodapContext";
 import SolanaWalletProvider from "./providers/WalletProvider";
-import NavBar from "./components/NavBar";
+
 import { Inter } from "next/font/google";
 import { CartProvider } from "./contexts/CartContext";
 import { AuthProvider } from "./contexts/AuthContext";
-import "@/styles/globals.css";
+import GlobalNavBar from "./components/GlobalNavBar";
+import GlobalFooter from "./components/GlobalFooter";
+import "./globals.css";
 const inter = Inter({ subsets: ["latin"] });
 
 export default function RootLayout({
@@ -18,16 +21,17 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={inter.className}>
+      <body className={`${inter.className} min-h-screen flex flex-col`}>
         <ChakraProvider>
           <AuthProvider>
             <SolanaWalletProvider>
               <SodapProvider>
                 <CartProvider>
-                  <NavBar />
-                  <Box as="main" pt="70px" px={4} maxW="container.xl" mx="auto">
+                  <GlobalNavBar />
+                  <main className="flex-grow pb-24 container mx-auto px-4">
                     {children}
-                  </Box>
+                  </main>
+                  <GlobalFooter />
                 </CartProvider>
               </SodapProvider>
             </SolanaWalletProvider>

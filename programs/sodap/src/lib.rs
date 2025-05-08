@@ -168,3 +168,12 @@ pub struct Initialize<'info> {
     pub payer: Signer<'info>,
     pub system_program: Program<'info, System>,
 }
+// inside #[program] sodap { … }
+pub fn purchase_cart(
+    ctx: Context<state::product::PurchaseCart>,
+    product_uuids: Vec<[u8; 16]>,
+    quantities: Vec<u64>,
+    gas_fee: u64,
+) -> Result<()> {
+    instructions::product::purchase_cart(ctx, product_uuids, quantities, gas_fee)
+}
