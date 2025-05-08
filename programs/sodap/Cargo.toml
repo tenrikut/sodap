@@ -1,21 +1,26 @@
 [package]
-name = "sodap"
-version = "0.1.0"
+name        = "sodap"
+version     = "0.1.0"
+edition     = "2021"
 description = "Created with Anchor"
-edition = "2021"
 
 [lib]
-crate-type = ["cdylib", "lib"]
-name = "sodap"
+name        = "sodap"
+crate-type  = ["cdylib", "lib"]
 
 [features]
-default = []
-cpi = ["no-entrypoint"]
 no-entrypoint = []
 no-idl = []
 no-log-ix-name = []
+cpi = ["no-entrypoint"]
+default = []
+solana = []
+anchor-debug = []
+custom-panic = []
+custom-heap = []
 idl-build = ["anchor-lang/idl-build", "anchor-spl/idl-build"]
 
 [dependencies]
-anchor-lang = { version = "0.31.1", features = ["init-if-needed"] }
-anchor-spl = "0.31.1"
+anchor-lang = { version = "0.31.0", features = ["init-if-needed"] }
+anchor-spl  = { version = "0.31.0" }
+borsh = "0.10.3"

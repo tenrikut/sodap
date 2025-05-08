@@ -476,3 +476,107 @@ export async function fetchAndParseProgramEvents(limit = 50) {
   }
   return events;
 }
+
+export async function findEscrowAddress(
+  storeId: PublicKey
+): Promise<[PublicKey, number]> {
+  return PublicKey.findProgramAddressSync(
+    [Buffer.from("escrow"), storeId.toBuffer()],
+    PROGRAM_ID
+  );
+}
+
+export async function findLoyaltyMintAddress(
+  storeId: PublicKey
+): Promise<[PublicKey, number]> {
+  return PublicKey.findProgramAddressSync(
+    [Buffer.from("loyalty_mint"), storeId.toBuffer()],
+    PROGRAM_ID
+  );
+}
+
+export async function processEscrowPayment(
+  program: Program,
+  buyer: web3.Keypair,
+  storeId: PublicKey,
+  amount: number
+): Promise<string> {
+  try {
+    const [escrowPda] = await findEscrowAddress(storeId);
+    const [storePda] = await findStoreAddress(storeId);
+
+    const tx = await program.methods
+      .purchaseCart(amount, 0, { pending: {} })
+      .accounts({
+        buyer: buyer.publicKey,
+        store: storePda,
+        escrowAccount: escrowPda,
+        systemProgram: web3.SystemProgram.programId,
+      })
+      .signers([buyer])
+      .rpc();
+
+    return tx;
+  } catch (error) {
+    console.error("Error processing escrow payment:", error);
+    throw error;
+  }
+}
+
+export async function releaseEscrowPayment(
+  program: Program,
+  storeOwner: web3.Keypair,
+  storeId: PublicKey,
+  amount: number
+): Promise<string> {
+  try {
+    const [escrowPda] = await findEscrowAddress(storeId);
+    const [storePda] = await findStoreAddress(storeId);
+
+    const tx = await program.methods
+      .releaseEscrow(new BN(amount))
+      .accounts({
+        escrowAccount: escrowPda,
+        store: storePda,
+        storeOwner: storeOwner.publicKey,
+        systemProgram: web3.SystemProgram.programId,
+      })
+      .signers([storeOwner])
+      .rpc();
+
+    return tx;
+  } catch (error) {
+    console.error("Error releasing escrow payment:", error);
+    throw error;
+  }
+}
+
+export async function refundEscrowPayment(
+  program: Program,
+  storeOwner: web3.Keypair,
+  buyer: PublicKey,
+  storeId: PublicKey,
+  amount: number
+): Promise<string> {
+  try {
+    const [escrowPda] = await findEscrowAddress(storeId);
+    const [storePda] = await findStoreAddress(storeId);
+
+    const tx = await program.methods
+      .refundFromEscrow(new BN(amount))
+      .accounts({
+        escrowAccount: escrowPda,
+        store: storePda,
+        buyer,
+        storeOwner: storeOwner.publicKey,
+        systemProgram: web3.SystemProgram.programId,
+      })
+      .signers([storeOwner])
+      .rpc();
+
+    return tx;
+  } catch (error) {
+    console.error("Error refunding escrow payment:", error);
+    throw error;
+  }
+}

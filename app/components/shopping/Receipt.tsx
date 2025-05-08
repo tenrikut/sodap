@@ -28,7 +28,6 @@ export default function Receipt({ receipt, onClose }: ReceiptProps) {
     return date.toLocaleString();
   };
 
-  // Format wallet address for display
   const formatAddress = (address: string) => {
     if (!address) return "";
     return address.slice(0, 6) + "..." + address.slice(-4);
@@ -46,8 +45,7 @@ export default function Receipt({ receipt, onClose }: ReceiptProps) {
       <div className="mb-6 flex flex-col items-center">
         <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-3">
           <svg
-            xmlns="http://www.w3.org/2000/svg"
-            className="h-8 w-8 text-green-600"
+            className="w-8 h-8 text-green-600"
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
@@ -60,32 +58,33 @@ export default function Receipt({ receipt, onClose }: ReceiptProps) {
             />
           </svg>
         </div>
-        <p className="text-green-600 font-medium">
-          Thank you for your purchase!
-        </p>
-      </div>
 
-      <div className="bg-gray-50 p-4 rounded-lg mb-6">
-        <div className="flex justify-between items-center mb-2">
-          <span className="text-gray-500">Date:</span>
-          <span>{formatDate(receipt.timestamp)}</span>
+        <div className="text-center mb-4">
+          <p className="text-gray-600">
+            Your transaction has been processed successfully
+          </p>
+          <p className="text-sm text-gray-500">
+            {formatDate(receipt.timestamp)}
+          </p>
         </div>
 
-        <div className="flex justify-between items-center mb-2">
-          <span className="text-gray-500">Transaction ID:</span>
-          <span className="font-mono text-sm">{receipt.transactionId}</span>
-        </div>
+        <div className="w-full space-y-2 text-sm">
+          <div className="flex justify-between items-center">
+            <span className="text-gray-500">Transaction ID:</span>
+            <span className="font-mono text-sm">{receipt.transactionId}</span>
+          </div>
 
-        <div className="flex justify-between items-center mb-2">
-          <span className="text-gray-500">Wallet:</span>
-          <span className="font-mono text-sm">
-            {publicKey ? formatAddress(publicKey.toString()) : "Unknown"}
-          </span>
-        </div>
+          <div className="flex justify-between items-center mb-2">
+            <span className="text-gray-500">Wallet:</span>
+            <span className="font-mono text-sm">
+              {publicKey ? formatAddress(publicKey.toString()) : "Unknown"}
+            </span>
+          </div>
 
-        <div className="flex justify-between items-center">
-          <span className="text-gray-500">Total:</span>
-          <span className="font-bold">{receipt.total.toFixed(3)} SOL</span>
+          <div className="flex justify-between items-center">
+            <span className="text-gray-500">Total:</span>
+            <span className="font-bold">{receipt.total.toFixed(3)} SOL</span>
+          </div>
         </div>
       </div>
 
@@ -93,7 +92,6 @@ export default function Receipt({ receipt, onClose }: ReceiptProps) {
         <div className="flex items-center">
           <div className="bg-blue-100 p-2 rounded-full mr-3">
             <svg
-              xmlns="http://www.w3.org/2000/svg"
               className="h-6 w-6 text-blue-600"
               fill="none"
               viewBox="0 0 24 24"

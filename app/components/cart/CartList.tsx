@@ -1,8 +1,9 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { useCart } from "@/contexts/CartContext";
 import Image from "next/image";
+import SolanaPayCheckout from "./SolanaPayCheckout";
 
 interface CartListProps {
   onConfirm?: () => void;
@@ -10,17 +11,30 @@ interface CartListProps {
 
 export default function CartList({ onConfirm }: CartListProps) {
   const { items, removeItem, clearCart } = useCart();
-  
-  const totalAmount = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  
-  const handleCheckout = () => {
+  const [showCheckout, setShowCheckout] = useState(false);
+
+  const totalAmount = items.reduce(
+    (sum, item) => sum + item.price * item.quantity,
+    0
+  );
+
+  const handleCheckoutClick = () => {
+    setShowCheckout(true);
+  };
+
+  const handleCheckoutSuccess = () => {
     if (onConfirm) {
       onConfirm();
     }
-    // Optionally clear the cart after successful checkout
-    // clearCart();
+    setShowCheckout(false);
+    clearCart();
   };
-  
+
+  const handleCheckoutError = (error: Error) => {
+    console.error("Checkout error:", error);
+    setShowCheckout(false);
+  };
+
   if (items.length === 0) {
     return (
       <div className="bg-white rounded-lg p-4 shadow-sm">
@@ -28,7 +42,16 @@ export default function CartList({ onConfirm }: CartListProps) {
       </div>
     );
   }
-  
+
+  if (showCheckout) {
+    return (
+      <SolanaPayCheckout
+        onSuccess={handleCheckoutSuccess}
+        onError={handleCheckoutError}
+      />
+    );
+  }
+
   return (
     <div className="bg-white rounded-lg p-4 shadow-sm">
       <ul className="divide-y divide-gray-200">
@@ -77,7 +100,7 @@ export default function CartList({ onConfirm }: CartListProps) {
           </li>
         ))}
       </ul>
-      
+
       <div className="mt-6 border-t border-gray-200 pt-4">
         <div className="flex justify-between text-base font-medium">
           <p>Subtotal</p>
@@ -87,13 +110,13 @@ export default function CartList({ onConfirm }: CartListProps) {
           Shipping and taxes calculated at checkout.
         </p>
       </div>
-      
+
       <div className="mt-6">
         <button
-          onClick={handleCheckout}
+          onClick={handleCheckoutClick}
           className="w-full bg-purple-600 text-white py-2 px-4 rounded hover:bg-purple-700 transition-colors"
         >
-          Checkout
+          Checkout with Solana Pay
         </button>
         <button
           onClick={clearCart}

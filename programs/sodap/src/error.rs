@@ -36,6 +36,18 @@ pub enum CustomError {
     StoreNotFound,
     #[msg("Unauthorized store access")]
     UnauthorizedStoreAccess,
+    #[msg("Admin not found")]
+    AdminNotFound,
+    #[msg("User not found")]
+    UserNotFound,
+    #[msg("Arithmetic error")]
+    ArithmeticError,
+    #[msg("Invalid store ID")]
+    InvalidStoreId,
+    #[msg("Invalid product ID")]
+    InvalidProductId,
+    #[msg("Invalid admin ID")]
+    InvalidAdminId,
     #[msg("Invalid loyalty configuration")]
     InvalidLoyaltyConfig,
     #[msg("Store is inactive")]
@@ -44,10 +56,22 @@ pub enum CustomError {
     InsufficientLoyaltyPoints,
     #[msg("Loyalty program is inactive")]
     LoyaltyProgramInactive,
-    #[msg("Arithmetic error")]
-    ArithmeticError,
+    #[msg("Invalid parameters")]
+    InvalidParameters,
+    #[msg("Insufficient funds")]
+    InsufficientFunds,
     #[msg("Invalid metadata URI")]
     InvalidMetadataUri,
-    #[msg("Admin not found")]
-    AdminNotFound,
+    #[msg("Invalid admin role")]
+    InvalidAdminRole,
+    #[msg("Invalid store")]
+    InvalidStore,
+    #[msg("Escrow account not found")]
+    EscrowNotFound,
+    #[msg("Loyalty mint not found")]
+    LoyaltyMintNotFound,
+    #[msg("Invalid loyalty points")]
+    InvalidLoyaltyPoints,
+    #[msg("Transfer hook error")]
+    TransferHookError,
 }

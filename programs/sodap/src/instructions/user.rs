@@ -1,10 +1,10 @@
 // User profile-related instructions, events, and accounts will be placed here.
 
 use crate::error::CustomError;
-use anchor_lang::prelude::*;
-use crate::types::*;
-use crate::state::user::{CreateOrUpdateUserProfile, ScanAndPurchase};
 use crate::state::user::UserProfileUpdated;
+pub use crate::state::user::{CreateOrUpdateUserProfile, ScanAndPurchase};
+use crate::types::*;
+use anchor_lang::prelude::*;
 
 pub fn create_or_update_user_profile(
     ctx: Context<CreateOrUpdateUserProfile>,

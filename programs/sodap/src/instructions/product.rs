@@ -1,9 +1,34 @@
 use crate::error::CustomError;
-use crate::state::product::{
+pub use crate::state::product::{
     CartPurchased, DeactivateProduct, Product, PurchaseCart, RegisterProduct, UpdateProduct,
 };
+use crate::state::store::Store;
+use crate::state::{RefundEscrow, ReleaseEscrow};
 use crate::types::{TokenizedType, TransactionStatus};
 use anchor_lang::prelude::*;
+use anchor_lang::system_program::{self, Transfer};
+
+#[derive(Accounts)]
+pub struct StoreEscrow<'info> {
+    #[account(
+        init_if_needed,
+        payer = payer,
+        space = 8 + 32 + 8,
+        seeds = [b"escrow", store.key().as_ref()],
+        bump
+    )]
+    pub escrow_account: Account<'info, Escrow>,
+    pub store: Account<'info, Store>,
+    #[account(mut)]
+    pub payer: Signer<'info>,
+    pub system_program: Program<'info, System>,
+}
+
+#[account]
+pub struct Escrow {
+    pub store: Pubkey,
+    pub balance: u64,
+}
 
 // Product instructions
 pub fn register_product(
@@ -128,15 +153,29 @@ pub fn purchase_cart<'info>(
         total_amount_paid,
     )?;
 
-    // Transfer payment from buyer to store owner
-    let transfer_ctx = CpiContext::new(
+    // Transfer payment from buyer to escrow account
+    let escrow_seeds = &[
+        b"escrow",
+        ctx.accounts.store.to_account_info().key.as_ref(),
+        &[ctx.bumps.escrow_account],
+    ];
+    let signer_seeds = &[&escrow_seeds[..]];
+
+    let transfer_to_escrow = CpiContext::new(
         ctx.accounts.system_program.to_account_info(),
-        anchor_lang::system_program::Transfer {
+        system_program::Transfer {
             from: ctx.accounts.buyer.to_account_info(),
-            to: ctx.accounts.store_owner.to_account_info(),
+            to: ctx.accounts.escrow_account.to_account_info(),
         },
     );
-    anchor_lang::system_program::transfer(transfer_ctx, total_price)?;
+    system_program::transfer(transfer_to_escrow, total_price)?;
+
+    // Update escrow balance
+    let escrow = &mut ctx.accounts.escrow_account;
+    escrow.balance = escrow
+        .balance
+        .checked_add(total_price)
+        .ok_or(CustomError::ArithmeticError)?;
 
     // Update product stocks
     let mut i = 0;
@@ -160,16 +199,69 @@ pub fn purchase_cart<'info>(
     receipt.buyer = ctx.accounts.buyer.key();
     receipt.ts = Clock::get()?.unix_timestamp;
 
-    // Emit purchase event
     emit!(CartPurchased {
         store_id: ctx.accounts.store.key(),
         buyer_id: ctx.accounts.buyer.key(),
-        product_uuids: product_uuids,
-        quantities: quantities,
+        product_uuids,
+        quantities,
         total_paid: total_price,
         gas_fee,
         timestamp: receipt.ts,
     });
+
+    Ok(())
+}
+
+pub fn release_escrow(ctx: Context<ReleaseEscrow>, amount: u64) -> Result<()> {
+    let escrow_info = ctx.accounts.escrow_account.to_account_info();
+    let escrow = &mut ctx.accounts.escrow_account;
+
+    let cpi_accounts = Transfer {
+        from: escrow_info,
+        to: ctx.accounts.store_owner.to_account_info(),
+    };
+
+    let cpi_program = ctx.accounts.system_program.to_account_info();
+    let store_key = ctx.accounts.store.key();
+    let seeds = &[
+        b"escrow".as_ref(),
+        store_key.as_ref(),
+        &[ctx.bumps.escrow_account],
+    ];
+    let signer_seeds = &[&seeds[..]];
+
+    let cpi_ctx = CpiContext::new_with_signer(cpi_program, cpi_accounts, signer_seeds);
+
+    system_program::transfer(cpi_ctx, amount)?;
+
+    escrow.balance = escrow.balance.checked_sub(amount).unwrap();
+
+    Ok(())
+}
+
+pub fn refund_from_escrow(ctx: Context<RefundEscrow>, amount: u64) -> Result<()> {
+    let escrow_info = ctx.accounts.escrow_account.to_account_info();
+    let escrow = &mut ctx.accounts.escrow_account;
+
+    let cpi_accounts = Transfer {
+        from: escrow_info,
+        to: ctx.accounts.buyer.to_account_info(),
+    };
+
+    let cpi_program = ctx.accounts.system_program.to_account_info();
+    let store_key = ctx.accounts.store.key();
+    let seeds = &[
+        b"escrow".as_ref(),
+        store_key.as_ref(),
+        &[ctx.bumps.escrow_account],
+    ];
+    let signer_seeds = &[&seeds[..]];
+
+    let cpi_ctx = CpiContext::new_with_signer(cpi_program, cpi_accounts, signer_seeds);
+
+    system_program::transfer(cpi_ctx, amount)?;
+
+    escrow.balance = escrow.balance.checked_sub(amount).unwrap();
 
     Ok(())
 }

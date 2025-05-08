@@ -41,6 +41,7 @@ pub struct PurchaseRecord {
 }
 
 #[derive(Accounts)]
+#[instruction(user_id: Option<String>, delivery_address: Option<String>, preferred_store: Option<Pubkey>)]
 pub struct CreateOrUpdateUserProfile<'info> {
     #[account(
         init_if_needed,

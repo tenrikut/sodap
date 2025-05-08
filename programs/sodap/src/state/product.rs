@@ -1,8 +1,8 @@
 use super::store::Store;
 use crate::error::CustomError;
+use crate::state::Escrow;
 use crate::types::{AnomalyFlag, TokenizedType, TransactionStatus};
 use anchor_lang::prelude::*;
-use anchor_lang::{prelude::*, system_program};
 
 #[account]
 pub struct Product {
@@ -109,6 +109,13 @@ pub struct PurchaseCart<'info> {
     )]
     /// CHECK: We verify this is the store owner in the constraint above
     pub store_owner: AccountInfo<'info>,
+    /// The escrow account that holds funds during the purchase
+    #[account(
+        mut,
+        seeds = [b"escrow", store.key().as_ref()],
+        bump
+    )]
+    pub escrow_account: Account<'info, Escrow>,
     pub system_program: Program<'info, System>,
 }
 /// off‑chain log
