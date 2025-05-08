@@ -1,4 +1,4 @@
-use crate::state::error::CustomError;
+use crate::error::CustomError;
 use crate::state::store::AdminRole;
 use crate::types::AdminRoleType;
 use crate::types::LoyaltyConfig;

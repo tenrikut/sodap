@@ -24,7 +24,7 @@ pub enum CustomError {
     ProductNotFound,
     #[msg("Insufficient stock")]
     InsufficientStock,
-    #[msg("Price overflow")]
+    #[msg("Price overflow when summing cart")]
     PriceOverflow,
     #[msg("Cart too large")]
     CartTooLarge,
@@ -50,6 +50,4 @@ pub enum CustomError {
     InvalidMetadataUri,
     #[msg("Admin not found")]
     AdminNotFound,
-    #[msg("Price overflow when summing cart")]
-    PriceOverflow,
 }

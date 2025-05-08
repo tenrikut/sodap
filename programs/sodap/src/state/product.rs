@@ -24,16 +24,17 @@ impl Product {
 pub struct Purchase {
     pub product_uuids: Vec<[u8; 16]>,
     pub quantities: Vec<u64>,
-    pub total_amount_paid: u64,
+    pub total_paid: u64,
     pub gas_fee: u64,
     pub status: TransactionStatus,
-    pub anomaly_flag: Option<AnomalyFlag>,
+    pub anomaly: AnomalyFlag,
     pub store: Pubkey,
     pub buyer: Pubkey,
+    pub ts: i64,
 }
 
 impl Purchase {
-    pub const LEN: usize = 8 + (4 + 10 * 16) + (4 + 10 * 8) + 8 + 8 + 1 + 1 + 32 + 32;
+    pub const LEN: usize = 8 + (4 + 10 * 16) + (4 + 10 * 8) + 8 + 8 + 1 + 1 + 32 + 32 + 8;
 }
 
 #[derive(Accounts)]
@@ -97,95 +98,19 @@ pub struct PurchaseCart<'info> {
         seeds = [b"purchase", store.key().as_ref(), buyer.key().as_ref()],
         bump
     )]
-    pub purchase: Account<'info, Purchase>,
+    pub receipt: Account<'info, Purchase>,
+    /// The buyer who is paying for the cart
     #[account(mut)]
     pub buyer: Signer<'info>,
+    /// The store owner who receives payment
+    #[account(
+        mut,
+        constraint = store_owner.key() == store.owner @ CustomError::UnauthorizedStoreAccess
+    )]
+    /// CHECK: We verify this is the store owner in the constraint above
+    pub store_owner: AccountInfo<'info>,
     pub system_program: Program<'info, System>,
 }
-
-pub fn purchase_cart(
-    ctx: Context<PurchaseCart>,
-    product_uuids: Vec<[u8; 16]>,
-    quantities: Vec<u64>,
-    gas_fee: u64,
-) -> Result<()> {
-    // -------- 1. sanity checks ------------------------------------------------
-    require!(
-        product_uuids.len() == quantities.len() && !product_uuids.is_empty(),
-        CustomError::InvalidCart
-    );
-
-    // remaining_accounts should contain each Product PDA in the same order
-    let mut acc_iter = ctx.remaining_accounts.iter();
-    let mut calculated_total: u64 = 0;
-
-    for (uuid, qty) in product_uuids.iter().zip(quantities.iter()) {
-        let acc_info = acc_iter.next().ok_or(CustomError::InvalidCart)?; // fewer accounts than items
-        let product: Account<Product> = Account::try_from(acc_info)?;
-        // seed check (optional but safer)
-        let expected_seed = Pubkey::create_program_address(
-            &[
-                b"product",
-                ctx.accounts.store.key().as_ref(),
-                uuid,
-                &[product.bump],
-            ],
-            ctx.program_id,
-        )?;
-        require!(expected_seed == product.key(), CustomError::ProductNotFound);
-
-        // stock + activity validation
-        require!(product.is_active, CustomError::ProductNotFound);
-        require!(product.stock >= *qty, CustomError::InsufficientStock);
-
-        calculated_total = calculated_total
-            .checked_add(
-                product
-                    .price
-                    .checked_mul(*qty)
-                    .ok_or(CustomError::PriceOverflow)?,
-            )
-            .ok_or(CustomError::PriceOverflow)?;
-    }
-
-    // -------- 2. collect lamports --------------------------------------------
-    let buyer = &ctx.accounts.buyer;
-    let store_owner = &ctx.accounts.store_owner;
-    let transfer_ctx = CpiContext::new(
-        ctx.accounts.system_program.to_account_info(),
-        system_program::Transfer {
-            from: buyer.to_account_info(),
-            to: store_owner.to_account_info(),
-        },
-    );
-    system_program::transfer(transfer_ctx, calculated_total)?;
-
-    // -------- 3. write receipt -----------------------------------------------
-    let purchase = &mut ctx.accountsreceipt;
-    purchase.store = ctx.accounts.store.key();
-    purchase.buyer = buyer.key();
-    purchase.product_uuids = product_uuids.clone();
-    purchase.quantities = quantities.clone();
-    purchase.total_paid = calculated_total;
-    purchase.gas_fee = gas_fee;
-    purchase.status = TransactionStatus::Completed;
-    purchase.anomaly = AnomalyFlag::None;
-    purchase.ts = Clock::get()?.unix_timestamp;
-
-    // -------- 4. emit event ---------------------------------------------------
-    emit!(CartPurchased {
-        store_id: purchase.store,
-        buyer_id: purchase.buyer,
-        product_uuids,
-        quantities,
-        total_paid: calculated_total,
-        gas_fee,
-        timestamp: purchase.ts,
-    });
-
-    Ok(())
-}
-
 /// off‑chain log
 #[event]
 pub struct CartPurchased {

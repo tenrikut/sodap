@@ -106,24 +106,15 @@ pub mod sodap {
         product::deactivate_product(ctx, product_uuid)
     }
 
-    pub fn purchase_cart(
-        ctx: Context<PurchaseCart>,
+    pub fn purchase_cart<'info>(
+        ctx: Context<'_, '_, 'info, 'info, PurchaseCart>,
         product_uuids: Vec<[u8; 16]>,
         quantities: Vec<u64>,
-        total_amount_paid: u64,
+        total_price: u64,
         gas_fee: u64,
         status: TransactionStatus,
-        anomaly_flag: Option<AnomalyFlag>,
     ) -> Result<()> {
-        product::purchase_cart(
-            ctx,
-            product_uuids,
-            quantities,
-            total_amount_paid,
-            gas_fee,
-            status,
-            anomaly_flag,
-        )
+        product::purchase_cart(ctx, product_uuids, quantities, total_price, gas_fee, status)
     }
 
     // Loyalty system instructions
@@ -167,13 +158,4 @@ pub struct Initialize<'info> {
     #[account(mut)]
     pub payer: Signer<'info>,
     pub system_program: Program<'info, System>,
-}
-// inside #[program] sodap { … }
-pub fn purchase_cart(
-    ctx: Context<state::product::PurchaseCart>,
-    product_uuids: Vec<[u8; 16]>,
-    quantities: Vec<u64>,
-    gas_fee: u64,
-) -> Result<()> {
-    instructions::product::purchase_cart(ctx, product_uuids, quantities, gas_fee)
 }
