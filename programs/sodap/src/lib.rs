@@ -2,7 +2,7 @@ use anchor_lang::prelude::*;
 use anchor_spl::token;
 
 // Declare the program ID used by Anchor
-declare_id!("4eLJ3QGiNrPN6UUr2fNxq6tUZqFdBMVpXkL2MhsKNriv");
+declare_id!("A8JtUvtSZ1iGciLGLJc4cKmNJ9YvkRiUngCZjZfTtSmf");
 
 // Module declarations without re-exports
 mod error;
@@ -57,8 +57,10 @@ pub struct Store {
     pub name: String,
     pub description: String,
     pub logo_uri: String,
+    pub loyalty_config: types::LoyaltyConfig,
     pub is_active: bool,
     pub revenue: u64,
+    pub admin_roles: Vec<state::store::AdminRole>,
 }
 
 // Define LoyaltyMint struct for token management
@@ -89,6 +91,9 @@ pub struct Purchase {
 // Declare a struct here to avoid using one from a module
 #[derive(Accounts)]
 pub struct RegisterStoreAccounts<'info> {
+    #[account(init_if_needed, payer = payer, space = 8 + 32 + 32 + 100 + 200 + 100 + 1 + 8 + 500, seeds = [b"store", authority.key().as_ref()], bump)]
+    pub store: Account<'info, Store>,
+    pub authority: Signer<'info>,
     #[account(mut)]
     pub payer: Signer<'info>,
     pub system_program: Program<'info, System>,
@@ -224,6 +229,9 @@ pub struct RemovePlatformAdminAccounts<'info> {
 
 #[derive(Accounts)]
 pub struct AddStoreAdminAccounts<'info> {
+    #[account(mut)]
+    pub store: Account<'info, Store>,
+    pub authority: Signer<'info>,
     #[account(mut)]
     pub payer: Signer<'info>,
     pub system_program: Program<'info, System>,
@@ -446,12 +454,29 @@ pub mod sodap {
         logo_uri: String,
         loyalty_config: types::LoyaltyConfig,
     ) -> Result<()> {
-        // Simplified implementation that doesn't rely on the original function
-        msg!("Registering store: {:?}", store_id);
-        msg!("Store name: {}", name);
-        msg!("Store description: {}", description);
-        msg!("Store logo URI: {}", logo_uri);
-        msg!("Store loyalty config: {:?}", loyalty_config);
+        // Get a mutable reference to the store account
+        let store = &mut ctx.accounts.store;
+        let authority = &ctx.accounts.authority;
+        
+        // Set the store account fields
+        store.owner = authority.key();
+        store.name = name;
+        store.description = description;
+        store.logo_uri = logo_uri;
+        store.loyalty_config = loyalty_config;
+        store.is_active = true;
+        store.revenue = 0;
+        
+        // Initialize admin roles with the owner as the first admin with owner role
+        store.admin_roles = vec![
+            state::store::AdminRole {
+                admin_pubkey: authority.key(),
+                role_type: types::AdminRoleType::Owner {}
+            }
+        ];
+        
+        msg!("Store registered successfully");
+        msg!("Owner: {:?}", store.owner);
         Ok(())
     }
 
@@ -747,10 +772,26 @@ pub mod sodap {
         admin_pubkey: Pubkey,
         role: types::AdminRoleType,
     ) -> Result<()> {
-        // Simplified implementation
-        msg!("Adding store admin: {:?}", admin_pubkey);
-        msg!("Store ID: {:?}", store_id);
-        msg!("Role: {:?}", role);
+        // Get a mutable reference to the store account
+        let store = &mut ctx.accounts.store;
+        let authority = &ctx.accounts.authority;
+        
+        // Check that the authority is the store owner
+        require!(authority.key() == store.owner, error::CustomError::Unauthorized);
+        require!(authority.is_signer, error::CustomError::Unauthorized);
+        
+        // Check if admin already exists
+        if store.admin_roles.iter().any(|r| r.admin_pubkey == admin_pubkey) {
+            return Err(error::CustomError::AdminAlreadyExists.into());
+        }
+        
+        // Add the admin to the store's admin_roles vector
+        store.admin_roles.push(state::store::AdminRole {
+            admin_pubkey,
+            role_type: role,
+        });
+        
+        msg!("Admin added successfully: {:?}", admin_pubkey);
         Ok(())
     }
 
